@@ -1,0 +1,246 @@
+{
+  "138703804": [
+    {
+      "id": 405452373,
+      "description": "<p>Есть ли у вас опыт работы на биржевых проектах? Если да - укажите, пожалуйста, компанию, проект и Вашу роль, а также кратко опишите задачи, которые выполняли</p>\n",
+      "multiple": "false",
+      "open": "true",
+      "candidateSolutions": []
+    },
+    {
+      "id": 405452374,
+      "description": "<p>Использовали ли Вы ИИ-инструменты в работе системного аналитика? Если да, приведите краткий пример задачи, для которой использовали ИИ (и какие инструменты использовали)</p>\n",
+      "multiple": "true",
+      "open": "true",
+      "candidateSolutions": []
+    },
+    {
+      "id": 405452375,
+      "description": "Готовы ли Вы оформиться на <strong>срочный</strong> трудовой договор сроком в <strong>6 месяцев</strong> (с возможностью пролонгации)?",
+      "multiple": "false",
+      "open": "true",
+      "candidateSolutions": []
+    },
+    {
+      "id": 405452376,
+      "description": "Какой уровень дохода Вы рассматриваете? ",
+      "multiple": "false",
+      "open": "true",
+      "candidateSolutions": []
+    }
+  ],
+  "138567655": [
+    {
+      "id": 364124147,
+      "description": "В какие сроки готовы приступить к работе?",
+      "multiple": "true",
+      "open": "true",
+      "candidateSolutions": []
+    },
+    {
+      "id": 364124148,
+      "description": "Укажите желаемый размер заработной платы.",
+      "multiple": "true",
+      "open": "true",
+      "candidateSolutions": []
+    },
+    {
+      "id": 364124149,
+      "description": "Опишите в 2–3 предложениях ваш последний проект: предметную область и что вы делали лично как системный аналитик.",
+      "multiple": "true",
+      "open": "true",
+      "candidateSolutions": []
+    }
+  ],
+  "138626027": [
+    {
+      "id": 339251056,
+      "description": "В чём мотивация поиска работы (что хотите найти или поменять)?",
+      "multiple": "true",
+      "open": "true",
+      "candidateSolutions": []
+    },
+    {
+      "id": 339251057,
+      "description": "Ваш ожидаемый доход по з/п до вычета налогов (gross) ",
+      "multiple": "true",
+      "open": "true",
+      "candidateSolutions": []
+    },
+    {
+      "id": 339251058,
+      "description": "Наличие оконченного высшего образования и военного билета (приписного св-ва для мужчин)",
+      "multiple": "true",
+      "open": "true",
+      "candidateSolutions": []
+    },
+    {
+      "id": 339251059,
+      "description": "<p>Есть ли опыт работы в банковском секторе (с какими именно продуктами был опыт работы)?</p>\n",
+      "multiple": "true",
+      "open": "true",
+      "candidateSolutions": []
+    },
+    {
+      "id": 339251060,
+      "description": "<p>С какими моделями данных был опыт работы (звезда, снежинка, Data vault)</p>\n",
+      "multiple": "true",
+      "open": "true",
+      "candidateSolutions": []
+    },
+    {
+      "id": 339251061,
+      "description": "<p>С какими слоями хранилища приходилось работать?</p>\n",
+      "multiple": "true",
+      "open": "true",
+      "candidateSolutions": []
+    },
+    {
+      "id": 339251062,
+      "description": "<p> Как оцениваете свой уровень владения SQL (с чем из списка есть опыт: операции select/insert/update/delete, commit/rollback, агрегатные функции, объединения, соединения множеств, однострочные, многострочные функции, оптимизация запросов и планы запросов, вложенные запросы, cte, оконные функции, регулярные выражения)?</p>\n",
+      "multiple": "true",
+      "open": "true",
+      "candidateSolutions": []
+    },
+    {
+      "id": 339251063,
+      "description": "<p> Есть опыт написания прототипов витрин?</p>\n",
+      "multiple": "true",
+      "open": "true",
+      "candidateSolutions": []
+    },
+    {
+      "id": 339251064,
+      "description": "<p> С какой документаций был опыт работы (S2T, TЗ, FSD, BRD, др.)?</p>\n",
+      "multiple": "true",
+      "open": "true",
+      "candidateSolutions": []
+    },
+    {
+      "id": 339251065,
+      "description": "<p> Занимались ли вы ETL-процессами? Что именно делали?</p>\n",
+      "multiple": "true",
+      "open": "true",
+      "candidateSolutions": []
+    },
+    {
+      "id": 339251066,
+      "description": "Напишите пожалуйста свой телеграмм:",
+      "multiple": "true",
+      "open": "true",
+      "candidateSolutions": []
+    },
+    {
+      "id": 339251067,
+      "description": "Готовы ли Вы работать в офисе банка 5/2? ",
+      "multiple": "false",
+      "open": "true",
+      "candidateSolutions": []
+    }
+  ],
+  "138623784": [
+    {
+      "id": 404908216,
+      "description": "Владеете ли Вы методиками сбора, формализации и анализа требований к разработке программного обеспечения (бизнес-, функциональных, нефункциональных и пользовательских)?",
+      "multiple": "false",
+      "open": "false",
+      "candidateSolutions": [
+        {
+          "id": "404908217",
+          "text": "Да"
+        },
+        {
+          "id": "404908218",
+          "text": "Нет"
+        }
+      ]
+    },
+    {
+      "id": 404908219,
+      "description": "Есть ли у Вас опыт разработки детальной функциональной и технической документации, а также прототипов пользовательских интерфейсов?",
+      "multiple": "false",
+      "open": "false",
+      "candidateSolutions": [
+        {
+          "id": "404908220",
+          "text": "Да"
+        },
+        {
+          "id": "404908221",
+          "text": "Нет"
+        }
+      ]
+    },
+    {
+      "id": 404908222,
+      "description": "Практические навыки моделирования бизнес-процессов и создания схем в нотациях UML и BPMN?",
+      "multiple": "false",
+      "open": "false",
+      "candidateSolutions": [
+        {
+          "id": "404908223",
+          "text": "Да"
+        },
+        {
+          "id": "404908224",
+          "text": "Нет"
+        }
+      ]
+    },
+    {
+      "id": 404908225,
+      "description": "Есть ли у Вас уверенное знание основ реляционных и колоночных баз данных и языка SQL?",
+      "multiple": "false",
+      "open": "false",
+      "candidateSolutions": [
+        {
+          "id": "404908226",
+          "text": "Да"
+        },
+        {
+          "id": "404908227",
+          "text": "Нет"
+        }
+      ]
+    },
+    {
+      "id": 404908228,
+      "description": "Есть ли опыт проектирования API?",
+      "multiple": "false",
+      "open": "false",
+      "candidateSolutions": [
+        {
+          "id": "404908229",
+          "text": "Да"
+        },
+        {
+          "id": "404908230",
+          "text": "Нет"
+        }
+      ]
+    },
+    {
+      "id": 404908231,
+      "description": "Есть ли у Вас опыт работы с Jira и Confluence?",
+      "multiple": "false",
+      "open": "false",
+      "candidateSolutions": [
+        {
+          "id": "404908232",
+          "text": "Да"
+        },
+        {
+          "id": "404908233",
+          "text": "Нет"
+        }
+      ]
+    },
+    {
+      "id": 404908234,
+      "description": "Ваши ожидания по заработной плате?",
+      "multiple": "true",
+      "open": "true",
+      "candidateSolutions": []
+    }
+  ]
+}

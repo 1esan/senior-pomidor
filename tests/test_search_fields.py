@@ -1,0 +1,25 @@
+import argparse,unittest
+from search_options import resolve_search_fields
+import hh,operations
+
+class SearchFieldTests(unittest.TestCase):
+ def test_default_is_name_only(self):self.assertEqual(resolve_search_fields(),['name'])
+ def test_invalid_and_empty_are_rejected(self):
+  for value in ([],['unknown'],'name',True,[None]):
+   with self.subTest(value=value),self.assertRaises(ValueError):resolve_search_fields(value)
+ def test_panel_to_hh_command_preserves_field_combinations(self):
+  for fields in (['name'],['description'],['company_name'],['name','description'],['name','description','company_name']):
+   with self.subTest(fields=fields):
+    command,channel=operations.command_for('apply',{'search_fields':fields})
+    args=hh.parser().parse_args(command[1:]);self.assertEqual(args.search_fields,fields)
+    result=hh.build_command(args,{'profile_confirmed':True})
+    start=result.index('--search-field')+1;end=result.index('--force-letter')
+    self.assertEqual(result[start:end],fields);self.assertEqual(channel,'hh')
+ def test_explicit_selection_overrides_legacy_body_setting(self):
+  self.assertEqual(resolve_search_fields(['name'],body_too=True),['name'])
+ def test_old_cli_flag_remains_compatible(self):
+  self.assertEqual(resolve_search_fields(body_too=True),['name','description'])
+ def test_panel_rejects_empty_selection(self):
+  with self.assertRaises(ValueError):operations.command_for('apply',{'search_fields':[]})
+
+if __name__=='__main__':unittest.main()
