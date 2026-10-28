@@ -71,6 +71,9 @@ def run(args):
         if args.action=='apply':
             print('Широкий поиск: без фильтров зарплаты, оформления, города и формата. Запреты компаний и повторы сохраняются.',flush=True)
             seen=set();counter=[0]
+            from hh_search_state import VacancyRunClaims
+            search_claims=VacancyRunClaims()
+            tool.candidate_claim_vacancy=search_claims.claim
             intent_path=HH_CONFIG/'application-intents.json'
             try:intents=json.loads(intent_path.read_text())
             except FileNotFoundError:intents={}

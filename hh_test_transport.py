@@ -27,6 +27,7 @@ def classify(response):
     if not url and isinstance(state,str) and state:
         url='https://hh.ru/account/captcha?'+urlencode({'state':state})
     location=response.headers.get('Location','')
+    if not isinstance(location,str):location=''
     from hh_captcha import valid_url
     if not url and location:
         proposed=urljoin('https://hh.ru',location)
@@ -101,3 +102,35 @@ def submit_test(tool,vacancy,payload,referer,*,base,refresh,guard):
             'unconfirmed':'HH не подтвердил приём ответов теста'}
         raise TestSubmissionBlocked(messages[kind]+'. Ответы сохранены; повтор заблокирован до сверки отклика')
     raise TestSubmissionBlocked('Проверка HH не завершена')
+
+
+def classify_test_form(response, initial_state=None):
+    """Classify the final page too: followed login redirects can end with HTTP 200."""
+    kind, body, captcha_url, diagnostic = classify(response)
+    raw_url = getattr(response, 'url', '')
+    parts = urlsplit(raw_url if isinstance(raw_url, str) else '')
+    path = parts.path.rstrip('/')
+    state = initial_state if isinstance(initial_state, dict) else {}
+    from hh_captcha import valid_url
+    if kind == 'captcha':
+        pass
+    elif valid_url(raw_url if isinstance(raw_url, str) else ''):
+        kind, captcha_url = 'captcha', raw_url
+    elif kind == 'login' or path in ('/account/login', '/login', '/applicant/login') or any(
+            isinstance(state.get(key), dict) for key in ('accountLogin', 'loginForm')):
+        kind = 'login'
+    elif response.status_code >= 400:
+        pass
+    elif response.is_redirect:
+        kind = 'unexpected_redirect'
+    else:
+        kind = 'form'
+    return kind, captcha_url, {**diagnostic, 'kind': kind, 'stage': 'load_form'}
+
+
+def form_block_message(kind, http_status):
+    if kind == 'login':
+        return ('Сессия сайта HH истекла: вместо теста открылась страница входа. '
+                'API-отклики могут работать отдельно. Открой Настройки → аккаунты → hh.ru, '
+                'повтори вход и запусти отклики заново. Отправленные отклики сохранены.')
+    return f'Форма теста HH недоступна: HTTP {http_status}, {kind}; ранее подготовленные ответы сохранены'
