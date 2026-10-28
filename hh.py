@@ -19,7 +19,7 @@ def build_command(args,profile,query=None):
     if args.action=='apply':
         if not 1<=args.max<=1000 or not 1<=get('pages',1)<=100 or not 1<=get('per_page',15)<=100:raise ValueError('Лимит 1–1000, страницы и размер страницы 1–100')
         cmd=['apply','--search',query or args.query,'--total-pages',str(get('pages',1)),'--per-page',str(get('per_page',15)),
-             '--max-responses',str(args.max),('--no-skip-tests' if get('solve_tests',False) else '--skip-tests'),'--professional-role','148','150','--order-by','publication_time',
+             '--max-responses',str(args.max),('--no-skip-tests' if get('solve_tests',False) else '--skip-tests'),'--order-by','publication_time',
              '--search-field',*resolve_search_fields(get('search_fields'),body_too=get('body_too',False)),'--force-letter','--system-prompt',prompt,
              '--message-prompt','Составь сопроводительное письмо по требованиям вакансии: приветствие и проекты, пункты соответствия требованиям на основе резюме и легенды, мотивация поиска и контакты. Вакансия: %(vacancy_name)s. Описание: %(vacancy_description)s.']
         ids=excluded_ids(profile)+(['3529'] if get('no_sber',False) else [])
@@ -74,13 +74,14 @@ def run(args):
             from hh_search_state import VacancyRunClaims
             search_claims=VacancyRunClaims()
             tool.candidate_claim_vacancy=search_claims.claim
+            from application_intents import blocks_application
             intent_path=HH_CONFIG/'application-intents.json'
             try:intents=json.loads(intent_path.read_text())
             except FileNotFoundError:intents={}
             def policy(v):
                 if counter[0]>=args.max:return 'skip','Общий лимит исчерпан'
                 if str(v['id']) in seen:return 'skip','Уже обработана в этом запуске'
-                if str(v['id']) in intents:return 'skip','Ранее отправлена или прерванная отправка требует ручной проверки'
+                if str(v['id']) in intents and blocks_application(intents[str(v['id'])]):return 'skip','Ранее отправлена или прерванная отправка требует ручной проверки'
                 if args.no_sber and re.search('сбер|sber',(v.get('employer') or {}).get('name',''),re.I):return 'skip','Сбер исключён для этого запуска'
                 return application_decision(v,load_profile())
             def completed(v,letter,dry):
@@ -91,8 +92,11 @@ def run(args):
                 save_json(ledger,state)
             def intent(v,params):
                 vid=str(v['id'])
-                if vid in intents:raise RuntimeError('Повтор отправки остановлен')
+                previous=intents.get(vid)
+                if vid in intents and blocks_application(previous):raise RuntimeError('Повтор отправки остановлен')
                 intents[vid]={'status':'attempting','resume_id':params['resume_id'],'run':stamp,'letter':params['message'],'test_answers':params.get('test_answers')}
+                if previous is not None:
+                    intents[vid]['previous_reconciliation']=previous.get('reconciliation')
                 save_json(intent_path,intents)
             def test_report(v, status, questions=None, reason=None):
                 state.setdefault('tests',[]).append({'vacancy_id':str(v['id']),'status':status,

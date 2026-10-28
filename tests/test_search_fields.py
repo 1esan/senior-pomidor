@@ -19,6 +19,15 @@ class SearchFieldTests(unittest.TestCase):
   self.assertEqual(resolve_search_fields(['name'],body_too=True),['name'])
  def test_old_cli_flag_remains_compatible(self):
   self.assertEqual(resolve_search_fields(body_too=True),['name','description'])
+ def test_no_hidden_professional_role_filter_and_guards_preserved(self):
+  profile={'profile_confirmed':True,'excluded_employers':[{'hh_ids':['999']} ]}
+  args=hh.parser().parse_args(['apply','--no-sber','--search-fields','name','--preset','all','--pages','10','--per-page','100'])
+  cmd=hh.build_command(args,profile)
+  self.assertNotIn('--professional-role',cmd)
+  self.assertIn('--excluded-employer-id',cmd);self.assertIn('999',cmd);self.assertIn('3529',cmd)
+  self.assertEqual(cmd[cmd.index('--search-field')+1],'name')
+  self.assertEqual(cmd[cmd.index('--total-pages')+1],'10');self.assertEqual(cmd[cmd.index('--per-page')+1],'100')
+  self.assertIn('--dry-run',cmd)
  def test_panel_rejects_empty_selection(self):
   with self.assertRaises(ValueError):operations.command_for('apply',{'search_fields':[]})
 
