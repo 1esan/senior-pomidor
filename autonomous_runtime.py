@@ -6,9 +6,9 @@ import requests
 from common import BASE,hh_read_json
 from employer_guard import ensure_contact,ContactBlocked
 from runtime import save_json
+from adapter_config import adapter_dir,adapter_key,node_command,AdapterConfigurationError
 
 STATE=BASE/'.state/giga-autonomous.json'
-ADAPTER=(Path.home() / 'Desktop' / 'GPT_подключение_для_бота')
 class NeedsDecision(RuntimeError):pass
 
 def status(value,**fields):
@@ -20,23 +20,29 @@ def status(value,**fields):
 
 def adapter_status():
     s=requests.Session();s.trust_env=False
-    key=(ADAPTER/'.state/adapter-key').read_text().strip()
+    key=adapter_key()
     r=s.get('http://127.0.0.1:8766/api/status',headers={'Authorization':'Bearer '+key},timeout=3)
     r.raise_for_status();return r.json()
 
 def ensure_adapter():
     try:d=adapter_status()
-    except requests.ConnectionError:
+    except (requests.ConnectionError, AdapterConfigurationError):
+        try:
+            adapter=adapter_dir(); node=node_command()
+            if not (adapter/'server.mjs').is_file():
+                raise AdapterConfigurationError('В указанной папке не найден server.mjs адаптера ИИ.')
+        except AdapterConfigurationError as exc:
+            raise NeedsDecision(str(exc)) from exc
         log_path=BASE/'logs/luna-service.log'
         with log_path.open('a') as log:
             log_path.chmod(0o600)
-            p=subprocess.Popen(['/opt/homebrew/bin/node','server.mjs'],cwd=ADAPTER,stdin=subprocess.DEVNULL,stdout=log,stderr=log,start_new_session=True)
+            p=subprocess.Popen([node,'server.mjs'],cwd=adapter,stdin=subprocess.DEVNULL,stdout=log,stderr=log,start_new_session=True)
         save_json(BASE/'.state/services/luna.json',{'pid':p.pid,'started_at':time.time()})
         d={}
         for _ in range(30):
             time.sleep(1)
             try:d=adapter_status()
-            except requests.RequestException:continue
+            except (requests.RequestException,AdapterConfigurationError):continue
             if d.get('sharing') and d.get('models'):break
             if p.poll() is not None:break
     if not d.get('sharing') or not any(m.get('slug')=='gpt-6-luna' for m in d.get('models',[])):

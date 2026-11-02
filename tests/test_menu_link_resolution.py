@@ -3,6 +3,7 @@ from pathlib import Path
 from unittest.mock import Mock,patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import interview_catalog as c
+from telegram_web_guard import TARGET_PEER
 
 def response(status=200,text='',location=None):
  r=Mock(status_code=status,headers={} if location is None else {'Location':location});r.iter_content.return_value=[text.encode()];return r
@@ -37,7 +38,7 @@ class RedirectTests(unittest.TestCase):
 
 class MenuLinkTests(unittest.TestCase):
  def menu(self):
-  return {'mid':'449','peer_id':'8491767152','text':'По какой из них продолжить?\n\n'+'\n\n'.join(str(i)+'. Системный аналитик\nКраткое описание '+str(i) for i in range(1,5)),'buttons':[str(i)+'. Системный аналитик' for i in range(1,5)],'section_links':{str(i):['https://rabota.sber.ru/search/'+str(i*100)] for i in range(1,5)}}
+  return {'mid':'449','peer_id':TARGET_PEER,'text':'По какой из них продолжить?\n\n'+'\n\n'.join(str(i)+'. Системный аналитик\nКраткое описание '+str(i) for i in range(1,5)),'buttons':[str(i)+'. Системный аналитик' for i in range(1,5)],'section_links':{str(i):['https://rabota.sber.ru/search/'+str(i*100)] for i in range(1,5)}}
  def test_four_equal_titles_resolve_and_persist_by_individual_links(self):
   with tempfile.TemporaryDirectory() as td:
    base=Path(td);items=[item(i) for i in range(1,9)];menu=self.menu()

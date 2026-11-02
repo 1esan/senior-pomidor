@@ -958,7 +958,7 @@ class Operation(BaseOperation):
 
     def _get_vacancy_tests(self, response_url: str) -> VacancyTestsData | None:
         """Парсит тесты"""
-        from hh_test_transport import classify, record_diagnostic, TestSubmissionBlocked
+        from hh_test_transport import classify_test_form, form_block_message, record_diagnostic, TestSubmissionBlocked
         from hh_captcha import valid_url, wait_for_user
         from common import BASE
         import os
@@ -972,17 +972,28 @@ class Operation(BaseOperation):
                     time.sleep((1,3)[attempt])
                     continue
                 raise TestSubmissionBlocked('Не удалось загрузить форму HH после трёх попыток; ранее подготовленные ответы сохранены') from ex
-            if response.status_code >= 400 or response.is_redirect:
-                kind, body, url, diagnostic = classify(response)
-                diagnostic['stage']='load_form'
+            kind, url, diagnostic = classify_test_form(response)
+            if kind != 'form':
                 record_diagnostic(BASE, 'form', diagnostic)
                 job=os.environ.get('BOT_JOB_ID')
                 if kind=='captcha' and valid_url(url) and job and attempt<2:
                     wait_for_user(BASE,url,job)
                     continue
-                raise TestSubmissionBlocked(f'Форма теста HH недоступна: HTTP {response.status_code}, {kind}; ответы сохранены')
-            res = self.tool.parse_initial_state(response)
-            return find_key(res, "vacancyTests")
+                raise TestSubmissionBlocked(form_block_message(kind, response.status_code))
+            try:
+                res = self.tool.parse_initial_state(response)
+            except (ValueError, TypeError) as ex:
+                record_diagnostic(BASE, 'form', {**diagnostic, 'kind':'invalid_form_state'})
+                raise TestSubmissionBlocked('HH вернул неизвестную структуру формы теста; массовые пропуски остановлены, отправки не повторяются') from ex
+            kind, url, diagnostic = classify_test_form(response, res)
+            if kind != 'form':
+                record_diagnostic(BASE, 'form', diagnostic)
+                raise TestSubmissionBlocked(form_block_message(kind, response.status_code))
+            tests = find_key(res, 'vacancyTests')
+            if not isinstance(tests, dict) or not tests:
+                record_diagnostic(BASE, 'form', {**diagnostic, 'kind':'missing_vacancy_tests'})
+                raise TestSubmissionBlocked('В ответе HH отсутствует форма теста: нужна проверка входа или структуры страницы. Запуск остановлен вместо массового пропуска вакансий')
+            return tests
         raise TestSubmissionBlocked('Проверка при загрузке формы HH не завершена')
 
     def _solve_vacancy_test(self, vacancy_id, resume_hash, letter="", vacancy=None):
@@ -992,7 +1003,9 @@ class Operation(BaseOperation):
         response_url = f"https://hh.ru/applicant/vacancy_response?vacancyId={vacancy_id}&startedWithQuestion=false&hhtmFrom=vacancy"
         tests = self._get_vacancy_tests(response_url)
         test = tests.get(str(vacancy_id)) if isinstance(tests, dict) else None
-        if not test: raise TestNeedsReview("Данные встроенного теста не найдены")
+        if not test:
+            from hh_test_transport import TestSubmissionBlocked
+            raise TestSubmissionBlocked('HH вернул форму без теста выбранной вакансии; нужна проверка структуры страницы, массовые пропуски остановлены')
         profile = load_profile()
         if not self.cover_letter_ai: raise TestNeedsReview("ИИ для тестов не подключён")
         config = dict(self.tool.get_openai_args('openai.cover_letter'))
@@ -1200,7 +1213,15 @@ class Operation(BaseOperation):
             if not res["items"]:
                 return
 
-            yield from res["items"]
+            claim = getattr(self.tool, 'candidate_claim_vacancy', None)
+            duplicates = 0
+            for vacancy in res['items']:
+                if callable(claim) and not claim(vacancy):
+                    duplicates += 1
+                    continue
+                yield vacancy
+            print(f'HH_SEARCH_PAGE: запрос={self.text or "похожие"!r} страница={page+1}/{res["pages"]} '
+                  f'получено={len(res["items"])} повторов={duplicates}', flush=True)
 
             if page >= res["pages"] - 1:
                 return

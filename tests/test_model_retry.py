@@ -61,7 +61,7 @@ class RetryTests(unittest.TestCase):
   with patch('logging.FileHandler',return_value=logging.NullHandler()):
    spec=importlib.util.spec_from_file_location('retry_giga',BASE/'giga-bot.py');bot=importlib.util.module_from_spec(spec);spec.loader.exec_module(bot)
   for autonomous in [False,True]:
-   with self.subTest(autonomous=autonomous),patch.object(bot,'run_status'),patch.object(bot.candidate_rules,'load_profile',return_value={}),patch.object(bot.candidate_rules,'build_system_prompt',return_value='test'),patch.object(m,'generate',return_value='Ответ') as generate:
+   with self.subTest(autonomous=autonomous),patch.object(bot,'run_status'),patch.object(bot,'adapter_key',return_value='offline-test-key'),patch.object(bot.candidate_rules,'load_profile',return_value={}),patch.object(bot.candidate_rules,'build_system_prompt',return_value='test'),patch.object(m,'generate',return_value='Ответ') as generate:
     bot.AUTONOMOUS=autonomous;bot.WEB_DEADLINE=None
     self.assertEqual(bot._raw_chat('вопрос'),'Ответ');generate.assert_called_once()
  def test_no_secrets_logged(self):

@@ -7,9 +7,10 @@ import common,hh,runtime,operations,profile_editor,telegram_state
 from hh_applicant_tool.operations.apply_vacancies import Operation as Apply
 from hh_applicant_tool.operations.reply_employers import Operation as Reply
 from employer_guard import ContactBlocked
-PROFILE=dict(profile_confirmed=True,name='Егор',city='Москва',phone='+7',telegram='@x',salary_min=280000,salary_max=320000,resume_text='Подтверждённый опыт системного аналитика, Kafka и REST API',work_formats=['Офис','Гибрид','Удалёнка'],office_cities=['Москва'],employment_types=[],mobility=['Переезд возможен'],military_id=None,business_travel=None,employer_contact_policy={'strict':True},excluded_employers=[{'company':'БКС','hh_ids':['1833'],'aliases':['БКС']}])
+from telegram_web_guard import TARGET_PEER
+PROFILE=dict(profile_confirmed=True,name='Тестовый кандидат',city='Тестоград',phone='TEST-PHONE-000',telegram='@fixture_candidate',salary_min=110000,salary_max=130000,resume_text='Тестовый опыт системного аналитика, Example Queue и Example API',work_formats=['Офис','Удалёнка'],office_cities=['Тестоград'],employment_types=[],mobility=['Тестовый вариант мобильности'],military_id=None,business_travel=None,employer_contact_policy={'strict':True},excluded_employers=[{'company':'Example Employer Alpha','hh_ids':['990000001'],'aliases':['Example Employer Alpha','Alpha Example']}])
 def vac(i,employer='Разрешённая организация'):
-    return {'id':str(i),'name':'Системный аналитик','employer':{'id':'123','name':employer},'alternate_url':'https://hh.ru/vacancy/'+str(i),'work_format':[{'id':'ON_SITE'}],'area':{'name':'Москва'},'salary':{'from':280000,'to':320000,'currency':'RUR','gross':False},'description':'REST API','key_skills':[{'name':'Kafka'}]}
+    return {'id':str(i),'name':'Системный аналитик','employer':{'id':'990000099','name':employer},'alternate_url':'https://hh.ru/vacancy/'+str(i),'work_format':[{'id':'ON_SITE'}],'area':{'name':'Тестоград'},'salary':{'from':110000,'to':130000,'currency':'RUR','gross':False},'description':'REST API','key_skills':[{'name':'Kafka'}]}
 
 class MigrationTests(unittest.TestCase):
     def test_all_old_search_options_parse_and_map(self):
@@ -53,7 +54,7 @@ class MigrationTests(unittest.TestCase):
                     with runtime.operation_lock('hh'):pass
 
     def test_profile_preserves_categorical_bans_and_unknowns(self):
-        p=profile_editor.update_profile(PROFILE,{'city':'Москва','profile_confirmed':True})
+        p=profile_editor.update_profile(PROFILE,{'city':'Тестоград','profile_confirmed':True})
         self.assertEqual(p['excluded_employers'],PROFILE['excluded_employers']);self.assertIsNone(p['military_id']);self.assertIsNone(p['business_travel'])
         with self.assertRaises(ValueError):profile_editor.update_profile(PROFILE,{'excluded_employers':[]})
         with self.assertRaises(ValueError):profile_editor.update_profile(PROFILE,{'salary_min':400000})
@@ -82,7 +83,7 @@ class MigrationTests(unittest.TestCase):
             b={'mid':'1','text':'Меню','buttons':['A']};self.assertNotEqual(telegram_state.fingerprint(b),telegram_state.fingerprint({**b,'buttons':['B']}))
 
     def test_verified_binding_rejects_forbidden_company(self):
-        with tempfile.TemporaryDirectory() as d,patch.object(telegram_state,'BASE',Path(d)),patch.object(telegram_state,'hh_read_json',return_value=vac(1,'БКС')),patch('employer_guard.load_profile',return_value=PROFILE):
+        with tempfile.TemporaryDirectory() as d,patch.object(telegram_state,'BASE',Path(d)),patch.object(telegram_state,'hh_read_json',return_value=vac(1,'Example Employer Alpha')),patch('employer_guard.load_profile',return_value=PROFILE):
             with self.assertRaises(ContactBlocked):telegram_state.bind('Системный аналитик','1',True)
             self.assertFalse((Path(d)/'.state/telegram-bindings.json').exists())
 
@@ -108,7 +109,7 @@ class MigrationTests(unittest.TestCase):
 
     def test_telethon_transport_dry_run_and_unsafe_button(self):
         spec=importlib.util.spec_from_file_location('tele_test',BASE/'giga-recruiter.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
-        e=Mock();e.TARGET_PEER="8491767152";c=Mock();c.send_message=AsyncMock();t=m.TelethonTransport(c,Mock(id=8491767152),e)
+        e=Mock();e.TARGET_PEER=TARGET_PEER;c=Mock();c.send_message=AsyncMock();t=m.TelethonTransport(c,Mock(id=int(TARGET_PEER)),e)
         asyncio.run(t.send(None,'Ответ',True));c.send_message.assert_not_called()
         asyncio.run(t.click(None,'Да',True));e.ensure_telegram_contact.assert_called()
 

@@ -7,7 +7,7 @@ import telegram_web_guard as g
 from autonomous_runtime import NeedsDecision
 from telegram_state import fingerprint
 from candidate import reply_problem
-HTML='''<div class="chat"><div class="bubbles"><div class="bubble is-in" data-mid="1"><div class="message">Вопрос</div><button class="reply-markup-button">Да</button></div></div><div class="input-message-input" contenteditable="true" data-peer-id="8491767152"></div><button class="btn-send send">Send</button></div><script>window.sent=[];document.querySelector('.btn-send').onclick=()=>sent.push(document.querySelector('.input-message-input').innerText);document.querySelector('.reply-markup-button').onclick=()=>sent.push('button');</script>'''
+HTML=f'''<div class="chat"><div class="bubbles"><div class="bubble is-in" data-mid="1"><div class="message">Вопрос</div><button class="reply-markup-button">Да</button></div></div><div class="input-message-input" contenteditable="true" data-peer-id="{g.TARGET_PEER}"></div><button class="btn-send send">Send</button></div><script>window.sent=[];document.querySelector('.btn-send').onclick=()=>sent.push(document.querySelector('.input-message-input').innerText);document.querySelector('.reply-markup-button').onclick=()=>sent.push('button');</script>'''
 class RecipientSafetyTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.p=await async_playwright().start();self.browser=await self.p.chromium.launch(headless=True,channel='chromium')
@@ -25,12 +25,12 @@ class RecipientSafetyTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await self.page.evaluate('sent'),[])
     async def test_switch_while_generating_then_back_stays_blocked(self):
         await self.page.evaluate("document.querySelector('.input-message-input').dataset.peerId='123'")
-        await self.page.evaluate("document.querySelector('.input-message-input').dataset.peerId='8491767152'")
+        await self.page.evaluate(f"document.querySelector('.input-message-input').dataset.peerId='{g.TARGET_PEER}'")
         with self.assertRaises(NeedsDecision):await g.dispatch(self.page,g.SEND_JS,await self.prepared())
         self.assertEqual(await self.page.evaluate('sent'),[])
     async def test_fast_switch_out_and_back_in_one_task_latches(self):
         arg=await self.prepared()
-        await self.page.evaluate("const e=document.querySelector('.input-message-input');e.dataset.peerId='123';e.dataset.peerId='8491767152'")
+        await self.page.evaluate(f"const e=document.querySelector('.input-message-input');e.dataset.peerId='123';e.dataset.peerId='{g.TARGET_PEER}'")
         with self.assertRaises(NeedsDecision):await g.dispatch(self.page,g.SEND_JS,arg)
         self.assertEqual(await self.page.evaluate('sent'),[])
     async def test_edited_same_message_cannot_be_answered(self):

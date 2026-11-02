@@ -7,11 +7,11 @@ from autonomous_runtime import NeedsDecision
 
 class ScreeningDialogueTests(unittest.TestCase):
     def test_relaxation_is_limited_to_screening(self):
-        p={'name':'Егор','resume_text':'Оркестрация сабагентов в личном проекте'}
+        p={'name':'Тестовый кандидат','resume_text':'Синтетический учебный проект: прототип чат-бота'}
         self.assertIn('Если спросили о конкретном опыте и ответ невозможно',build_system_prompt(p))
         relaxed=build_system_prompt(p,screening=True)
         self.assertNotIn('Если спросили о конкретном опыте и ответ невозможно',relaxed)
-        self.assertIn('Личные AI-проекты',relaxed)
+        self.assertIn('Личные проекты можно упоминать только если они описаны в данных кандидата',relaxed)
         self.assertIn('не принимай оффер',relaxed)
 
     def cleaner(self):
@@ -22,7 +22,7 @@ class ScreeningDialogueTests(unittest.TestCase):
         return g['clean_text_reply']
 
     def test_missing_detail_gets_a_second_generation(self):
-        retry=Mock(return_value='В личном проекте распределял задачи между агентами и проверял результат.')
+        retry=Mock(return_value='В тестовом прототипе проверял распределение условных задач между компонентами.')
         self.assertEqual(self.cleaner()('NEEDS_USER',retry),retry.return_value)
         retry.assert_called_once()
 

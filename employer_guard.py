@@ -22,12 +22,31 @@ def excluded_ids(profile):
     return sorted({str(i) for group in profile.get("excluded_employers",[]) for i in group.get("hh_ids",[])})
 
 
+def valid_excluded_employers(groups):
+    """Require every configured exclusion to identify a company and its aliases."""
+    if not isinstance(groups,list) or not groups:
+        return False
+    for group in groups:
+        if not isinstance(group,dict):
+            return False
+        company=group.get("company")
+        aliases=group.get("aliases")
+        ids=group.get("hh_ids")
+        if not isinstance(company,str) or not company.strip():
+            return False
+        if not isinstance(aliases,list) or not aliases or any(not isinstance(a,str) or not a.strip() for a in aliases):
+            return False
+        if not isinstance(ids,list) or any(not isinstance(i,(str,int)) or not str(i).isdigit() for i in ids):
+            return False
+    return True
+
+
 def blocked_text_reason(text, profile):
     normalized=normalize(text)
     words=re.findall(r"[a-z0-9]+",normalized)
     compact="".join(words)
     for group in profile.get("excluded_employers",[]):
-        for alias in group.get("aliases",[]):
+        for alias in [group["company"],*group.get("aliases",[])]:
             a=re.sub(r"[^a-z0-9]","",normalize(alias))
             if a and a in compact:
                 return f"Запрещённая/схожая компания: {group['company']} (совпадение {alias})"
@@ -41,8 +60,14 @@ def blocked_text_reason(text, profile):
 
 def contact_reason(vacancy, profile=None, context=""):
     profile=load_profile() if profile is None else profile
-    if not profile.get("employer_contact_policy",{}).get("strict") or not profile.get("excluded_employers"):
+    if not profile.get("employer_contact_policy",{}).get("strict"):
         return "Нет подтверждённого списка запретов; контакт остановлен"
+    exclusions=profile.get("excluded_employers")
+    if not exclusions:
+        if exclusions != [] or profile.get("employer_exclusions_confirmed") is not True:
+            return "Нет подтверждённых исключений работодателей; контакт остановлен"
+    elif not valid_excluded_employers(exclusions):
+        return "Список исключений работодателей некорректен; контакт остановлен"
     employer=vacancy.get("employer") or {}
     eid=str(employer.get("id") or "")
     if eid and eid in excluded_ids(profile):return f"Запрещённый работодатель: HH ID {eid}"

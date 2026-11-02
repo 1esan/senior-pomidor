@@ -27,9 +27,9 @@ class ReportTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             base=Path(d);(base/'hh-dash-template.html').write_text((BASE/'hh-dash-template.html').read_text())
             states=['response','discard','discard_by_applicant','interview']
-            items=[{'id':str(i),'state':{'id':state},'vacancy':{'name':'Системный аналитик','employer':{'name':'<img src=x onerror=alert(1)>'}},'created_at':'2026-10-13T12:00:00Z','updated_at':'2026-10-13T13:00:00Z'} for i,state in enumerate(states)]
+            items=[{'id':str(i),'state':{'id':state},'vacancy':{'name':'Системный аналитик','employer':{'name':'<img src=x onerror=alert(1)>'}},'created_at':'2026-04-15T12:00:00Z','updated_at':'2026-04-15T13:00:00Z'} for i,state in enumerate(states)]
             def api(path):
-                if '/messages' in path:return {'pages':1,'items':[{'id':'2','created_at':'2026-10-13T13:00:00Z','author':{'participant_type':'applicant'},'text':'Ответ'}, {'id':'1','created_at':'2026-10-13T12:00:00Z','author':{'participant_type':'employer'},'text':'Вопрос?'}]}
+                if '/messages' in path:return {'pages':1,'items':[{'id':'2','created_at':'2026-04-15T13:00:00Z','author':{'participant_type':'applicant'},'text':'Ответ'}, {'id':'1','created_at':'2026-04-15T12:00:00Z','author':{'participant_type':'employer'},'text':'Вопрос?'}]}
                 return {'pages':1,'items':items if 'status=active' in path else []}
             with patch.object(common,'BASE',base),patch.object(common,'HH_CONFIG',base),patch.object(common,'hh_read_json',side_effect=api),patch.object(sys,'argv',['test','--full']),contextlib.redirect_stdout(io.StringIO()):
                 m=runpy.run_path(str(BASE/'hh-dash.py'),run_name='__main__')
@@ -65,7 +65,7 @@ class ReportTests(unittest.TestCase):
 
     def console(self,base):
         (base/'.state').mkdir();(base/'logs').mkdir()
-        (base/'giga_profile.json').write_text(json.dumps({'name':'Егор','city':'Москва'}))
+        (base/'giga_profile.json').write_text(json.dumps({'name':'Example Candidate','city':'Город-Образец'}))
         (base/'setup.html').write_text((BASE/'setup.html').read_text())
         with patch.object(common,'BASE',base):return runpy.run_path(str(BASE/'setup_console.py'),run_name='audit_console')
 
@@ -94,7 +94,7 @@ class ReportTests(unittest.TestCase):
             g=m['run_report'].__globals__;g['report_job']={'status':'running'}
             with patch('subprocess.run',return_value=Mock(returncode=0)) as runner:
                 g['run_report']('dashboard')
-                self.assertEqual([c.args[0][2:] for c in runner.call_args_list],[['hh-dash.py'],['hh-activity.py']])
+                self.assertEqual([c.args[0][c.args[0].index('-u')+1:] for c in runner.call_args_list],[['hh-dash.py'],['hh-activity.py']])
                 self.assertEqual(g['report_job']['status'],'completed')
 
     def test_activity_includes_verified_batch_ledger(self):

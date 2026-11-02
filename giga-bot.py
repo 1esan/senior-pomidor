@@ -45,6 +45,7 @@ INTERVIEW_COMPLETED=False
 WEB_DEADLINE=None
 from telegram_web_guard import QuestionChanged,TARGET_PEER,DOM_HELPER,bind_page,assert_target,dispatch,SEND_JS,BUTTON_JS,check_deadline,require_empty_editor,native_button
 from autonomous_runtime import NeedsDecision,ensure_adapter,verified_scope,check_intro,fresh_guard,interview_finished,requires_decision,status as run_status
+from adapter_config import adapter_key,AdapterConfigurationError
 
 # ------------------------------------------------------------------ КОНФИГ ---
 
@@ -85,6 +86,7 @@ SYSTEM_PROMPT = build_system_prompt(load_profile(),screening=True)
 
 # --------------------------------------------------------------- ЛОГГЕР ------
 
+(Path(__file__).parent / 'logs').mkdir(mode=0o700,exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s",
@@ -97,7 +99,6 @@ log = logging.getLogger("giga-bot")
 
 _ollama = requests.Session()
 _ollama.trust_env = False
-_ollama.headers["Authorization"] = "Bearer " + ((Path.home() / "Desktop" / "GPT_подключение_для_бота" / ".state" / "adapter-key").read_text().strip())
 
 _history: list[dict] = []
 
@@ -118,6 +119,8 @@ CJK_RE = re.compile(r"[㐀-鿿豈-﫿]")
 
 def _raw_chat(user_content: str) -> str:
     global SYSTEM_PROMPT,PROMPT_VERSION,RULES_MTIME
+    try:_ollama.headers['Authorization']='Bearer '+adapter_key()
+    except AdapterConfigurationError as exc:raise NeedsDecision(str(exc)) from exc
     rules_mtime=Path(candidate_rules.__file__).stat().st_mtime_ns
     if RULES_MTIME is not None and RULES_MTIME!=rules_mtime:importlib.reload(candidate_rules)
     RULES_MTIME=rules_mtime
@@ -984,7 +987,7 @@ async def wait_history(page):
 async def ollama_alive():
     try:
         s = requests.Session(); s.trust_env = False
-        token=(Path.home() / "Desktop" / "GPT_подключение_для_бота" / ".state" / "adapter-key").read_text().strip()
+        token=adapter_key()
         r=s.get("http://127.0.0.1:8766/api/status",headers={"Authorization":"Bearer "+token},timeout=3)
         r.raise_for_status();state=r.json()
         return state.get("sharing") and any(m.get("slug")=="gpt-6-luna" for m in state.get("models",[]))

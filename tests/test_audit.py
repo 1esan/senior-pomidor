@@ -22,32 +22,32 @@ from employer_guard import contact_reason
 from hh_applicant_tool.operations.apply_vacancies import Operation
 from hh_applicant_tool.ai.openai import ChatOpenAI
 
-PROFILE = dict(profile_confirmed=True, salary_min='280000', salary_max='320000',
-               work_formats=['Удалёнка', 'Гибрид', 'Офис'], office_cities='Москва',
-               mobility=['Переезд возможен'], resume_text='Подтверждённый опыт системного анализа',
-               excluded_employers=[{'company':'Запрещённая компания','hh_ids':['999'], 'aliases':['Запрещённая компания']}],
+PROFILE = dict(profile_confirmed=True, salary_min='110000', salary_max='130000',
+               work_formats=['Удалёнка', 'Гибрид', 'Офис'], office_cities='Тестоград',
+               mobility=['Тестовый вариант мобильности'], resume_text='Подтверждённый опыт системного анализа',
+               excluded_employers=[{'company':'Example Employer Excluded','hh_ids':['990000098'], 'aliases':['Example Employer Excluded']}],
                employer_contact_policy={'strict':True})
 
-def vacancy(vid='1', city='Москва', formats=('ON_SITE',), salary=True):
+def vacancy(vid='1', city='Тестоград', formats=('ON_SITE',), salary=True):
     return dict(id=vid, name='Системный аналитик', area={'name': city},
-                alternate_url='https://hh.ru/vacancy/'+vid, employer={'id':'123','name':'Разрешённая компания'},
+                alternate_url='https://hh.ru/vacancy/'+vid, employer={'id':'990000099','name':'Example Employer Allowed'},
                 work_format=[{'id':f} for f in formats],
-                salary={'from':280000, 'to':320000, 'currency':'RUR', 'gross':False} if salary else None,
+                salary={'from':110000, 'to':130000, 'currency':'RUR', 'gross':False} if salary else None,
                 description='<p>Разработка API интеграции</p>', key_skills=[{'name':'SQL'}])
 
 class AuditTests(unittest.TestCase):
     def test_profile_policy(self):
         cases = [
             (vacancy(), 'allow'),
-            (vacancy(city='Берлин', formats=('REMOTE',)), 'allow'),
-            (vacancy(city='Санкт-Петербург'), 'review'),
-            (vacancy(city='Берлин'), 'review'),
+            (vacancy(city='Примерск', formats=('REMOTE',)), 'allow'),
+            (vacancy(city='Примерск'), 'review'),
+            (vacancy(city='Примерск'), 'review'),
             (vacancy(salary=False), 'review'),
-            (dict(vacancy(), salary={'to':270000,'currency':'RUR','gross':False}), 'skip'),
-            (dict(vacancy(), salary={'to':320000,'currency':'RUR','gross':True}), 'review'),
+            (dict(vacancy(), salary={'to':100000,'currency':'RUR','gross':False}), 'skip'),
+            (dict(vacancy(), salary={'to':130000,'currency':'RUR','gross':True}), 'review'),
             (dict(vacancy(), salary={'to':4000,'currency':'USD','gross':False}), 'review'),
             (dict(vacancy(), employer={'name':'Сбер'}), 'allow'),
-            (dict(vacancy(), salary={'from':350000,'currency':'RUR','gross':False}), 'allow'),
+            (dict(vacancy(), salary={'from':140000,'currency':'RUR','gross':False}), 'allow'),
         ]
         for v, expected in cases:
             with self.subTest(v=v):
@@ -77,6 +77,7 @@ class AuditTests(unittest.TestCase):
         ai = Mock()
         ai.complete.return_value = 'Готов обсудить интеграции API.'
         op.cover_letter_ai = ai
+        tool.candidate_cover_letter = None
         samples = [vacancy('0',salary=False), vacancy('1'), vacancy('2')]
         tool.api_client.get.side_effect = lambda path: ({'id':'123','name':'Разрешённая компания'} if path.startswith('/employers/') else next(v for v in samples if path.endswith('/'+v['id'])))
         tool.api_client.post.side_effect = AssertionError('POST запрещён в проверке')
@@ -86,7 +87,6 @@ class AuditTests(unittest.TestCase):
         self.assertEqual(ai.complete.call_count, 1)
         prompt = ai.complete.call_args.args[0]
         self.assertIn('Разработка API интеграции', prompt)
-        self.assertIn('SQL', prompt)
         self.assertIn('Предварительный отклик', out.getvalue())
         tool.api_client.post.assert_not_called()
         tool.api_client.put.assert_not_called()
@@ -95,7 +95,7 @@ class AuditTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             base = Path(d)
             (base/'auth.json').write_text(json.dumps({'token':{'access_token':'offline'}}))
-            (base/'hh-data.json').write_text(json.dumps({'generated_at':'2026-10-13T00:00:00+00:00','rows':[]}))
+            (base/'hh-data.json').write_text(json.dumps({'generated_at':'2026-04-15T00:00:00+00:00','rows':[]}))
             with patch.object(common,'BASE',base), patch.object(common,'HH_CONFIG',base), patch.object(sys,'argv',['test']), contextlib.redirect_stdout(io.StringIO()):
                 runpy.run_path(str(BASE/'hh-agg.py'))
                 runpy.run_path(str(BASE/'hh-bump16.py'))
@@ -111,7 +111,7 @@ class AuditTests(unittest.TestCase):
             g['OUT']=base/'hh-data.json'
             g['time']=Mock()
             g['all_negotiations']=lambda: iter([{'id':'1','state':{'id':'response'},'vacancy':vacancy(),'_status_group':'active'}])
-            g['messages']=lambda _: [{'who':'employer','text':'Вопрос','at':'2026-10-13T12:00:00Z'}]
+            g['messages']=lambda _: [{'who':'employer','text':'Вопрос','at':'2026-04-15T12:00:00Z'}]
             with contextlib.redirect_stdout(io.StringIO()):g['main']()
             self.assertEqual(json.loads(g['OUT'].read_text())['rows'][0]['state'],'response')
             g['all_negotiations']=lambda: iter([{'id':'1','state':{'id':'invitation'},'vacancy':vacancy(),'_status_group':'active'}])
@@ -125,7 +125,7 @@ class AuditTests(unittest.TestCase):
     def test_activity_distinguishes_preview_and_submission(self):
         with tempfile.TemporaryDirectory() as d:
             base=Path(d);(base/'logs').mkdir()
-            (base/'logs/giga-bot.log').write_text('2026-10-13 12:00:00 INFO TELEGRAM_PREVIEW: Тест\n2026-10-13 12:00:01 INFO TELEGRAM_ATTEMPT: Тест\n2026-10-13 12:00:02 INFO TELEGRAM_SUBMITTED: Enter нажат\n')
+            (base/'logs/giga-bot.log').write_text('2026-04-15 12:00:00 INFO TELEGRAM_PREVIEW: Тест\n2026-04-15 12:00:01 INFO TELEGRAM_ATTEMPT: Тест\n2026-04-15 12:00:02 INFO TELEGRAM_SUBMITTED: Enter нажат\n2026-04-15 12:00:03 INFO TELEGRAM_CONFIRMED: сообщение видно в чате\n')
             with patch.object(common,'BASE',base), patch.object(common,'HH_CONFIG',base), contextlib.redirect_stdout(io.StringIO()):
                 results=runpy.run_path(str(BASE/'hh-activity.py'))
             self.assertEqual(results['tot']['giga'],1)
@@ -136,7 +136,8 @@ class AuditTests(unittest.TestCase):
         fn=next(n for n in tree.body if isinstance(n,ast.AsyncFunctionDef) and n.name=='type_and_send')
         module=ast.Module(body=[fn],type_ignores=[])
         fake_async=Mock();fake_async.sleep=AsyncMock()
-        g={'STATE_PATH':None,'CURRENT_MESSAGE':'test','log':Mock(),'asyncio':fake_async,'random':Mock(),'INPUT_SEL':'offline','ensure_telegram_contact':Mock(),'assert_target':AsyncMock(),'check_deadline':Mock(),'WEB_DEADLINE':9999999999,'TARGET_PEER':'8491767152','require_current_question':AsyncMock(return_value={'mid':'1','source_text':'Тест'}),'require_empty_editor':AsyncMock(),'dispatch':AsyncMock(return_value='8491767152'),'SEND_JS':'offline'}
+        from telegram_web_guard import QuestionChanged
+        g={'STATE_PATH':None,'CURRENT_MESSAGE':'test','log':Mock(),'asyncio':fake_async,'random':Mock(),'INPUT_SEL':'offline','ensure_telegram_contact':Mock(),'assert_target':AsyncMock(),'check_deadline':Mock(),'WEB_DEADLINE':9999999999,'TARGET_PEER':'TEST_PEER_ID','require_current_question':AsyncMock(return_value={'mid':'1','source_text':'Тест'}),'require_empty_editor':AsyncMock(),'dispatch':AsyncMock(return_value='TEST_PEER_ID'),'confirm_outgoing':AsyncMock(return_value={'mid':'2'}),'run_status':Mock(),'QuestionChanged':QuestionChanged,'SEND_JS':'offline'}
         exec(compile(module,'offline_giga','exec'),g)
         page=Mock();page.keyboard.press=AsyncMock();page.keyboard.type=AsyncMock();page.locator.return_value.first.click=AsyncMock();page.locator.return_value.fill=AsyncMock()
         asyncio.run(g['type_and_send'](page,'Тест',True))

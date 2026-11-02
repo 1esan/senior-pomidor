@@ -4,8 +4,8 @@ from unittest.mock import Mock,patch
 import requests
 from vacancy_tests import prepare_test,TestNeedsReview,attach_related_cases
 from hh_test_transport import submit_test
-P={'screening_answers':'BI-инструменты не использовал.','resume_text':'БКС: описывал бизнес-валидации API, проверки и защиту от повторного исполнения операций.'}
-CASE='Есть схожий опыт: в БКС описывал проверки API и ограничения, чтобы операция не исполнялась повторно.'
+P={'screening_answers':'Example BI Tool не использовал.','resume_text':'Example Employer Alpha: описывал бизнес-валидации API, проверки и защиту от повторного исполнения операций.'}
+CASE='Есть схожий опыт: в Example Employer Alpha описывал проверки API и ограничения, чтобы операция не исполнялась повторно.'
 def raw(ids=None,text='',case=None):
  d={'choice_ids':ids or [],'text':text,'needs_review':False}
  if case is not None:d['related_case']=case
@@ -30,18 +30,18 @@ class RelatedCaseTests(unittest.TestCase):
   ai=Mock();ai.complete.return_value=raw(['20'])
   with self.assertRaises(TestNeedsReview):prepare_test(form(task(False)),{},ai,lambda text:None,profile=P)
  def test_reframed_closed_answer_always_carries_its_reason_into_letter(self):
-  case='В БКС согласовывал правила обработки операций с продуктовой командой и архитектором.'
+  case='В Example Employer Alpha согласовывал правила обработки операций с продуктовой командой и архитектором.'
   ai=Mock();ai.complete.side_effect=[raw(['20']),raw(['10'],case=case)]
   _,review=prepare_test(form(task(False)),{},ai,lambda text:None,profile=P)
   self.assertTrue(review[0]['reframed_from_negative'])
   self.assertIn(case,attach_related_cases('Короткий сопровод.',review))
  def test_known_negative_fact_is_preserved(self):
   ai=Mock();ai.complete.return_value=raw(['20'])
-  payload,_=prepare_test(form(task(False,'Есть ли опыт работы с BI?')),{},ai,lambda text:None,profile=P)
+  payload,_=prepare_test(form(task(False,'Есть ли опыт работы с Example BI Tool?')),{},ai,lambda text:None,profile=P)
   self.assertEqual(payload['task_1'],'20')
  def test_office_refusal_is_unchanged(self):
   ai=Mock();ai.complete.return_value=raw(['20'])
-  payload,_=prepare_test(form(task(False,'Готовы к работе в офисе в Казани?')),{},ai,lambda text:None,profile=P)
+  payload,_=prepare_test(form(task(False,'Готовы к работе в офисе в Городе-Образце?')),{},ai,lambda text:None,profile=P)
   self.assertEqual(payload['task_1'],'20')
  def test_service_phrase_cannot_hide_in_case(self):
   ai=Mock();ai.complete.return_value=raw(['10'],case='В резюме не указано, нужно уточнить.')
@@ -52,7 +52,7 @@ class RelatedCaseTests(unittest.TestCase):
   self.assertEqual(result.count(CASE),1);self.assertLess(result.index(CASE),result.index('Надеюсь'))
  def test_direct_case_is_recorded_but_does_not_expand_letter(self):
   letter='Короткий сопровод.'
-  self.assertEqual(attach_related_cases(letter,[{'related_case':'В БКС проектировал REST API подключения стратегии.'}]),letter)
+  self.assertEqual(attach_related_cases(letter,[{'related_case':'В Example Employer Alpha проектировал REST API подключения стратегии.'}]),letter)
  def test_got_response_after_network_loss_never_reposts(self):
   tool=Mock(xsrf_token='safe');tool.session.post.side_effect=requests.Timeout();tool.api_client.get.return_value={'relations':['got_response']}
   with tempfile.TemporaryDirectory() as d:result=submit_test(tool,{'id':'1'},{},'https://hh.ru/applicant/vacancy_response',base=d,refresh=Mock(),guard=Mock())

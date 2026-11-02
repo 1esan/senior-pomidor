@@ -22,7 +22,7 @@ if profile.exists():
 else:phone=''
 for name in files:
  p=Path(name)
- if any(x in p.parts for x in ('.state','.browsers','.venv','logs','__pycache__')) or p.name in ('giga_profile.json','statistics.json','hh-data.json','test_sources.json','personal_launcher.json') or p.suffix in ('.session','.sqlite3','.sqlite','.db','.pem','.key') or p.name.startswith('.env'):
+ if any(x in p.parts for x in ('.state','.browsers','.venv','logs','schedule','__pycache__')) or p.name in ('giga_profile.json','statistics.json','hh-data.json','test_sources.json','personal_launcher.json','cover_letter_settings.json') or p.suffix in ('.session','.sqlite3','.sqlite','.db','.pem','.key') or p.name.startswith('.env'):
   blocked.append((name,'private file'));continue
  raw=git('show',':'+name)
  try:text=raw.decode('utf-8')

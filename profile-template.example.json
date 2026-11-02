@@ -1,0 +1,29 @@
+{
+  "profile_confirmed": false,
+  "name": "",
+  "city": "",
+  "phone": "",
+  "telegram": "",
+  "salary_min": null,
+  "salary_max": null,
+  "military_id": null,
+  "business_travel": null,
+  "work_formats": [],
+  "work_format_priority": [],
+  "office_cities": [],
+  "employment_types": [],
+  "mobility": [],
+  "hybrid_office_days_max": null,
+  "hybrid_office_days_preferred": "",
+  "extra_notes": "",
+  "job_search_reason": "",
+  "screening_answers": "",
+  "screening_guidance": "",
+  "resume_text": "",
+  "resume_source": "",
+  "employer_contact_policy": {
+    "strict": true
+  },
+  "employer_exclusions_confirmed": false,
+  "excluded_employers": []
+}

@@ -27,16 +27,16 @@ class AutonomousTests(unittest.TestCase):
 
     def test_scope_checks_actual_hh_invitation(self):
         with tempfile.TemporaryDirectory() as d,patch.object(a,'BASE',Path(d)),patch.object(a,'ensure_contact'):
-            v={'id':'137109340','name':'СА','employer':{'id':'3529','name':'СБЕР'}}
+            v={'id':'990000102','name':'СА','employer':{'id':'3529','name':'СБЕР'}}
             negotiations={'pages':1,'items':[{'id':'2','vacancy':v}]}
             with patch.object(a,'hh_read_json',side_effect=[v,negotiations,{'pages':1,'items':[]}]):
-                with self.assertRaises(a.NeedsDecision):a.verified_scope('137109340')
+                with self.assertRaises(a.NeedsDecision):a.verified_scope('990000102')
             messages={'pages':1,'items':[{'author':{'participant_type':'employer'},'text':'https://telegram.me/Giga_recruiter_bot?start=private'}]}
             with patch.object(a,'hh_read_json',side_effect=[v,negotiations,messages]):
-                scope=a.verified_scope('137109340')
-                self.assertEqual(scope['id'],'137109340')
+                scope=a.verified_scope('990000102')
+                self.assertEqual(scope['id'],'990000102')
                 self.assertEqual(scope['employer_id'],'3529')
-                self.assertTrue((Path(d)/'.state/giga-invitations/137109340.json').exists())
+                self.assertTrue((Path(d)/'.state/giga-invitations/990000102.json').exists())
 
     def test_invitation_search_paginates_and_checks_author(self):
         with tempfile.TemporaryDirectory() as d,patch.object(a,'BASE',Path(d)),patch.object(a,'ensure_contact'):
@@ -61,8 +61,8 @@ class AutonomousTests(unittest.TestCase):
         self.assertEqual(a.invitation_links(messages),[])
 
     def test_autonomous_requires_live_and_scope(self):
-        with self.assertRaises(ValueError):operations.command_for('giga-web',{'autonomous':True,'vacancy_id':'138337933'})
-        command,_=operations.command_for('giga-web',{'autonomous':True,'vacancy_id':'138337933','mode':'live','confirm_live':True,'auto_next':False})
+        with self.assertRaises(ValueError):operations.command_for('giga-web',{'autonomous':True,'vacancy_id':'990000101'})
+        command,_=operations.command_for('giga-web',{'autonomous':True,'vacancy_id':'990000101','mode':'live','confirm_live':True,'auto_next':False})
         self.assertIn('--autonomous',command);self.assertIn('--vacancy-id',command);self.assertIn('--no-auto-next',command)
 
     def test_visible_delivery_required(self):

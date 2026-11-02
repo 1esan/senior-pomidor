@@ -6,7 +6,7 @@ from playwright.async_api import async_playwright
 import telegram_web_guard as g
 with patch('logging.FileHandler',return_value=logging.NullHandler()):
  spec=importlib.util.spec_from_file_location('native_test_engine',B/'giga-bot.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
-HTML='<div class="chat"><div class="bubbles"><div class="bubble is-in" data-mid="210"><div class="message">Вопрос</div><button class="reply-markup-button">Выбрать</button></div></div><div class="input-message-input" contenteditable="true" data-peer-id="8491767152"></div></div>'
+HTML=f'<div class="chat"><div class="bubbles"><div class="bubble is-in" data-mid="210"><div class="message">Вопрос</div><button class="reply-markup-button">Выбрать</button></div></div><div class="input-message-input" contenteditable="true" data-peer-id="{m.TARGET_PEER}"></div></div>'
 class NativeTests(unittest.IsolatedAsyncioTestCase):
  async def asyncSetUp(self):
   self.status_patch=patch.object(m,'run_status');self.status_patch.start();self.addCleanup(self.status_patch.stop)
