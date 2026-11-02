@@ -41,7 +41,7 @@ def command_for(action,o):
             preset=o.get('preset','moscow')
             if preset not in ('moscow','ru-cis','abroad','all'):raise ValueError('Неизвестная география')
             cmd+=['--preset',preset,'--max',str(number(o,'max',10,1,1000)),'--pages',str(number(o,'pages',1,1,100)),'--per-page',str(number(o,'per_page',15,1,100))]
-            queries=text(o,'queries','системный аналитик',5000)
+            queries=text(o,'queries','',5000)
             if o.get('all_queries') is True:cmd+=['--all-queries']
             else:
                 q=[v.strip() for v in queries.splitlines() if v.strip()]

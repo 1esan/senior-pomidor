@@ -1,10 +1,16 @@
 from python_runtime import python_command
 from pathlib import Path
-import json, secrets, subprocess, sys, threading, webbrowser, time
+import json, os, secrets, subprocess, sys, threading, webbrowser, time
 from flask import Flask, request, jsonify, Response, send_file, redirect
 from common import BASE, auth_status, write_status
 
 app = Flask(__name__)
+SETUP_ONLY=os.environ.get('BOT_SETUP_ONLY')=='1'
+from first_run import blocks_setup_action
+@app.before_request
+def block_actions_during_first_setup():
+    if blocks_setup_action(request.method,request.path,SETUP_ONLY):
+        return jsonify(error='В режиме первичной настройки доступны только чтение и сохранение профиля.'),403
 app.config['MAX_CONTENT_LENGTH']=10*1024*1024
 import operations
 from statistics_store import read_statistics,render_report,recent_application_runs
@@ -79,7 +85,11 @@ def run_report(name):
 
 @app.get('/')
 def index():
-    response=Response((BASE/'setup.html').read_text().replace('__KEY__',json.dumps(key)),mimetype='text/html')
+    html=(BASE/'setup.html').read_text().replace('__KEY__',json.dumps(key))
+    if SETUP_ONLY:
+        banner='<div role="status" style="position:fixed;z-index:2000;bottom:12px;left:12px;right:12px;padding:12px 16px;border:1px solid #a77849;border-radius:10px;background:#252018;color:#ded8cf;text-align:center">Первичная настройка · реальные операции и подключение аккаунтов заблокированы</div>'
+        html=html.replace('</body>',banner+'</body>')
+    response=Response(html,mimetype='text/html')
     response.set_cookie('console',key,httponly=True,samesite='Strict')
     return response
 
@@ -92,7 +102,8 @@ def status():
     from hh_captcha import read_state
     challenge=read_state(BASE)
     public_captcha={k:v for k,v in challenge.items() if k!='url'}
-    return jsonify(apply_runs=recent_application_runs(BASE),captcha=public_captcha,latest_run=latest_run,hh=auth_status('hh'),telegram=auth_status('telegram'),profile={'name':p.get('name'),'city':p.get('city'),'salary_min':p.get('salary_min'),'salary_max':p.get('salary_max'),'confirmed':p.get('profile_confirmed')},reports=reports_state(),last_batch=prepared.get('last_batch'),operations=operations.state(),scope='Все операции доступны; отправка требует режима Отправка и подтверждения.')
+    scope='Первичная настройка: запуск операций и подключение аккаунтов заблокированы.' if SETUP_ONLY else 'Все операции доступны; отправка требует режима Отправка и подтверждения.'
+    return jsonify(apply_runs=recent_application_runs(BASE),captcha=public_captcha,latest_run=latest_run,hh=auth_status('hh'),telegram=auth_status('telegram'),profile={'name':p.get('name'),'city':p.get('city'),'salary_min':p.get('salary_min'),'salary_max':p.get('salary_max'),'confirmed':p.get('profile_confirmed')},reports=reports_state(),last_batch=prepared.get('last_batch'),operations=operations.state(),scope=scope)
 
 @app.post('/api/connect/<channel>')
 def start(channel):
@@ -235,15 +246,17 @@ def refresh_after_operations():
         run_report('dashboard')
 
 if __name__=='__main__':
-    with (BASE/'logs/hh-status-monitor.log').open('a') as status_log:
-        subprocess.Popen(python_command('-u',str(BASE/'hh_status_monitor.py')),cwd=BASE,stdin=subprocess.DEVNULL,stdout=status_log,stderr=status_log,start_new_session=True)
-    with (BASE/'logs/activity-monitor.log').open('a') as monitor_log:
-        subprocess.Popen(python_command('-u',str(BASE/'activity_monitor.py')),cwd=BASE,stdin=subprocess.DEVNULL,stdout=monitor_log,stderr=monitor_log,start_new_session=True)
-    threading.Thread(target=refresh_after_operations,daemon=True).start()
+    (BASE/'logs').mkdir(exist_ok=True)
+    if not SETUP_ONLY:
+        with (BASE/'logs/hh-status-monitor.log').open('a') as status_log:
+            subprocess.Popen(python_command('-u',str(BASE/'hh_status_monitor.py')),cwd=BASE,stdin=subprocess.DEVNULL,stdout=status_log,stderr=status_log,start_new_session=True)
+        with (BASE/'logs/activity-monitor.log').open('a') as monitor_log:
+            subprocess.Popen(python_command('-u',str(BASE/'activity_monitor.py')),cwd=BASE,stdin=subprocess.DEVNULL,stdout=monitor_log,stderr=monitor_log,start_new_session=True)
+        threading.Thread(target=refresh_after_operations,daemon=True).start()
 
     import logging
     logging.getLogger('werkzeug').setLevel(logging.WARNING)
-    if '--no-open' not in sys.argv:threading.Timer(1,lambda:webbrowser.open('http://127.0.0.1:8768')).start()
-    if '--telegram' in sys.argv:threading.Timer(2,lambda:connect('telegram')).start()
+    if '--no-open' not in sys.argv and not os.environ.get('BOT_SETUP_NO_OPEN'):threading.Timer(1,lambda:webbrowser.open('http://127.0.0.1:8768')).start()
+    if '--telegram' in sys.argv and not SETUP_ONLY:threading.Timer(2,lambda:connect('telegram')).start()
     print('BOT_CONSOLE_READY http://127.0.0.1:8768',flush=True)
     app.run(host='127.0.0.1',port=8768,debug=False,use_reloader=False)

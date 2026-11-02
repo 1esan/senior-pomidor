@@ -36,7 +36,7 @@ class IntentTests(unittest.TestCase):
      return 0
     tool.run=run
     with patch.object(hh,'BASE',root),patch.object(hh,'HH_CONFIG',cfg),patch.object(hh,'load_profile',return_value={}),patch.object(hh,'build_command',return_value=['apply']),patch.object(hh,'hh_tool',return_value=tool),patch.object(hh,'application_decision',return_value=('allow','ok')),patch.object(hh,'operation_lock',return_value=contextlib.nullcontext()):
-     self.assertEqual(hh.run(hh.parser().parse_args(['apply','--live'])),0)
+     self.assertEqual(hh.run(hh.parser().parse_args(['apply','--query','Example Analyst','--live'])),0)
     after=json.loads(path.read_text())['12']
     if isinstance(original,dict) and original.get('status')=='retry_allowed':
      self.assertEqual(after['status'],'sent');self.assertIn('previous_reconciliation',after)

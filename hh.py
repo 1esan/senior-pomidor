@@ -18,7 +18,9 @@ def build_command(args,profile,query=None):
     prompt=build_system_prompt(profile)
     if args.action=='apply':
         if not 1<=args.max<=1000 or not 1<=get('pages',1)<=100 or not 1<=get('per_page',15)<=100:raise ValueError('Лимит 1–1000, страницы и размер страницы 1–100')
-        cmd=['apply','--search',query or args.query,'--total-pages',str(get('pages',1)),'--per-page',str(get('per_page',15)),
+        selected_query=query or args.query or next(iter(get('queries') or []),'') or (DEFAULT_QUERIES[0] if get('all_queries',False) else '')
+        if not str(selected_query).strip():raise ValueError('Укажи поисковый запрос')
+        cmd=['apply','--search',selected_query,'--total-pages',str(get('pages',1)),'--per-page',str(get('per_page',15)),
              '--max-responses',str(args.max),('--no-skip-tests' if get('solve_tests',False) else '--skip-tests'),'--order-by','publication_time',
              '--search-field',*resolve_search_fields(get('search_fields'),body_too=get('body_too',False)),'--force-letter','--system-prompt',prompt,
              '--message-prompt','Составь сопроводительное письмо по требованиям вакансии: приветствие и проекты, пункты соответствия требованиям на основе резюме и легенды, мотивация поиска и контакты. Вакансия: %(vacancy_name)s. Описание: %(vacancy_description)s.']
@@ -38,7 +40,7 @@ def build_command(args,profile,query=None):
 def parser():
     p=argparse.ArgumentParser(description='HH на Mac. По умолчанию предпросмотр, отправка только --live')
     p.add_argument('action',choices=['apply','reply','whoami','resumes'])
-    p.add_argument('--resume-id');p.add_argument('--query',default='системный аналитик')
+    p.add_argument('--resume-id');p.add_argument('--query',default='')
     p.add_argument('--queries',nargs='+');p.add_argument('--all-queries',action='store_true')
     p.add_argument('--max',type=int,default=10);p.add_argument('--pages',type=int,default=1);p.add_argument('--per-page',type=int,default=15)
     p.add_argument('--solve-tests',action='store_true',help='Подготовка и прохождение встроенных тестов HH')

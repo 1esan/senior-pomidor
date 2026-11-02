@@ -137,7 +137,7 @@ class FlowTests(unittest.IsolatedAsyncioTestCase):
   with patch.object(m,'get_catalog',return_value=catalog):await m.establish_interview(intro)
   self.assertEqual(m.PINNED_VACANCY['id'],'1');self.assertEqual(m._history,[{'role':'assistant','content':'Ранее описал интеграции офисного пакета и API.'}])
   next_question={'peer_id':m.TARGET_PEER,'mid':'315','dir':'in','buttons':[],'text':'Какие офисные пакеты использовали?'}
-  with patch.object(m,'ensure_telegram_contact'),patch.object(m,'resolve_company',return_value=None),patch.object(m,'ollama_chat',return_value='Использовал офисные пакеты для подготовки документов и таблиц.'),patch.object(m,'human_pause',new=AsyncMock()),patch.object(m,'type_and_send',new=AsyncMock()) as send:
+  with patch.object(m,'contact_reason',return_value=None),patch.object(m,'ensure_telegram_contact'),patch.object(m,'resolve_company',return_value=None),patch.object(m,'ollama_chat',return_value='Использовал офисные пакеты для подготовки документов и таблиц.'),patch.object(m,'human_pause',new=AsyncMock()),patch.object(m,'type_and_send',new=AsyncMock()) as send:
    await m.handle_last(None,next_question,False)
   send.assert_awaited_once();self.assertEqual(send.await_args.args[1],'Использовал офисные пакеты для подготовки документов и таблиц.')
   self.assertIn('Ранее описал',m._history[0]['content'])
@@ -153,7 +153,7 @@ class FlowTests(unittest.IsolatedAsyncioTestCase):
   with patch.object(m,'get_catalog',return_value={'items':[item(1),item(2,'Мобильный аналитик')]}):await m.establish_interview(b)
   self.assertEqual(m.CUR_VACANCY['vacancy_id'],'2');self.assertEqual(m._history,[]);self.assertEqual(m.PROGRESS['active_context']['key'],'hh:2')
  async def test_rating_skips_model_and_requests_menu(self):
-  m.PINNED_VACANCY=item(1);m.CUR_VACANCY.update(m.current_scope_record(m.PINNED_VACANCY,'8491767152:1:abc'));m.PROGRESS['awaiting_menu']=True
+  m.PINNED_VACANCY=item(1);m.CUR_VACANCY.update(m.current_scope_record(m.PINNED_VACANCY,m.TARGET_PEER+':1:abc'));m.PROGRESS['awaiting_menu']=True
   b={'mid':'20','buttons':['★☆☆☆☆','★★★★★'],'text':'Пожалуйста, оцените мою работу!'}
   with patch.object(m,'ollama_chat') as model,patch.object(m,'request_next_menu',new=AsyncMock()) as send:
    await m.handle_last(None,b,False)
@@ -166,24 +166,24 @@ class FlowTests(unittest.IsolatedAsyncioTestCase):
   self.assertTrue(m.INTERVIEW_COMPLETED);self.assertEqual(click.await_count,1);self.assertEqual(click.await_args.args[1],'Далее')
  async def test_new_generic_intro_cannot_reuse_old_selection(self):
   m.PINNED_VACANCY={**item(1),'selection':{'label':'Старая кнопка'}}
-  m.CUR_VACANCY.update(vacancy_id='1',intro_fingerprint='8491767152:1:old')
+  m.CUR_VACANCY.update(vacancy_id='1',intro_fingerprint=m.TARGET_PEER+':1:old')
   b={'peer_id':m.TARGET_PEER,'mid':'20','dir':'in','buttons':[],'text':'Получил Ваш отклик на позицию Системный аналитик.'}
   with patch.object(m,'get_catalog',return_value={'items':[item(1),item(2)]}):
    with self.assertRaises(a.NeedsDecision):await m.establish_interview(b)
  async def test_confirmed_menu_selection_can_bind_next_generic_intro(self):
-  m.PROGRESS['pending_selection']={**item(2),'selection':{'menu_fingerprint':'8491767152:10:menu','selected_at':time.time(),'proof':'official_id','label':'2. Системный аналитик'}}
-  m.PROGRESS['actions']['8491767152:10:menu:button-native:2. Системный аналитик']='confirmed'
+  m.PROGRESS['pending_selection']={**item(2),'selection':{'menu_fingerprint':m.TARGET_PEER+':10:menu','selected_at':time.time(),'proof':'official_id','label':'2. Системный аналитик'}}
+  m.PROGRESS['actions'][m.TARGET_PEER+':10:menu:button-native:2. Системный аналитик']='confirmed'
   b={'peer_id':m.TARGET_PEER,'mid':'20','dir':'in','buttons':[],'text':'Получил Ваш отклик на позицию Системный аналитик.'}
   with patch.object(m,'get_catalog',return_value={'items':[item(1),item(2)]}):await m.establish_interview(b)
   self.assertEqual(m.CUR_VACANCY['vacancy_id'],'2');self.assertNotIn('pending_selection',m.PROGRESS)
  async def test_old_intro_before_pending_selection_cannot_bind(self):
-  m.PROGRESS['pending_selection']={**item(2),'selection':{'menu_fingerprint':'8491767152:30:menu','selected_at':time.time(),'label':'2. Системный аналитик'}}
+  m.PROGRESS['pending_selection']={**item(2),'selection':{'menu_fingerprint':m.TARGET_PEER+':30:menu','selected_at':time.time(),'label':'2. Системный аналитик'}}
   b={'peer_id':m.TARGET_PEER,'mid':'20','dir':'in','buttons':[],'text':'Получил Ваш отклик на позицию Системный аналитик.'}
   with patch.object(m,'get_catalog',return_value={'items':[item(1),item(2)]}):
    with self.assertRaises(a.NeedsDecision):await m.establish_interview(b)
  async def test_pending_selection_filters_unique_old_intro_without_wiping_choice(self):
-  selected={**item(2),'selection':{'menu_fingerprint':'8491767152:449:menu','selected_at':time.time(),'proof':'official_id','label':'1. Системный аналитик'}}
-  m.PROGRESS['actions']['8491767152:449:menu:button-native:1. Системный аналитик']='confirmed'
+  selected={**item(2),'selection':{'menu_fingerprint':m.TARGET_PEER+':449:menu','selected_at':time.time(),'proof':'official_id','label':'1. Системный аналитик'}}
+  m.PROGRESS['actions'][m.TARGET_PEER+':449:menu:button-native:1. Системный аналитик']='confirmed'
   m.PROGRESS['pending_selection']=selected;m.CUR_VACANCY.update(m.current_scope_record(selected));m.PINNED_VACANCY=selected
   old={'peer_id':m.TARGET_PEER,'mid':'439','dir':'in','buttons':[],'text':'Получил Ваш отклик на позицию СФР.'}
   ack={**old,'mid':'449','text':'Спасибо за выбор вакансии! Дайте мне несколько секунд — и мы начнем диалог 👍'}
@@ -193,8 +193,8 @@ class FlowTests(unittest.IsolatedAsyncioTestCase):
    catalog.assert_not_called();model.assert_not_called()
   self.assertEqual(m.PROGRESS['pending_selection']['id'],'2');self.assertEqual(m.CUR_VACANCY['vacancy_id'],'2')
  async def test_new_generic_intro_after_ack_keeps_selected_id_across_restart(self):
-  selected={**item(2),'selection':{'menu_fingerprint':'8491767152:449:menu','selected_at':time.time(),'proof':'official_id','label':'1. Системный аналитик'}}
-  m.PROGRESS['actions']['8491767152:449:menu:button-native:1. Системный аналитик']='confirmed'
+  selected={**item(2),'selection':{'menu_fingerprint':m.TARGET_PEER+':449:menu','selected_at':time.time(),'proof':'official_id','label':'1. Системный аналитик'}}
+  m.PROGRESS['actions'][m.TARGET_PEER+':449:menu:button-native:1. Системный аналитик']='confirmed'
   m.PROGRESS.update(pending_selection=selected,current=m.current_scope_record(selected),active_context={'key':'hh:2','messages':[]})
   m.CUR_VACANCY.update(m.PROGRESS['current']);m.PINNED_VACANCY=None
   old={'peer_id':m.TARGET_PEER,'mid':'439','dir':'in','buttons':[],'text':'Получил Ваш отклик на позицию СФР.'}
@@ -204,7 +204,7 @@ class FlowTests(unittest.IsolatedAsyncioTestCase):
   self.assertEqual(m.CUR_VACANCY['vacancy_id'],'2');self.assertEqual(m.CUR_VACANCY['intro_mid'],'450');self.assertNotIn('pending_selection',m.PROGRESS)
   self.assertEqual(m.PROGRESS['active_context'],{'key':'hh:2','messages':[]})
  async def test_direct_old_unique_intro_is_rejected_before_catalog_and_preserves_pending(self):
-  selected={**item(2),'selection':{'menu_fingerprint':'8491767152:449:menu','selected_at':time.time()}}
+  selected={**item(2),'selection':{'menu_fingerprint':m.TARGET_PEER+':449:menu','selected_at':time.time()}}
   m.PROGRESS['pending_selection']=selected
   old={'peer_id':m.TARGET_PEER,'mid':'439','dir':'in','buttons':[],'text':'Получил Ваш отклик на позицию СФР.'}
   with patch.object(m,'get_catalog') as catalog:
@@ -212,7 +212,7 @@ class FlowTests(unittest.IsolatedAsyncioTestCase):
    catalog.assert_not_called()
   self.assertEqual(m.PROGRESS['pending_selection'],selected)
  async def test_same_menu_mid_intro_is_not_treated_as_new_interview(self):
-  m.PROGRESS['pending_selection']={**item(2),'selection':{'menu_fingerprint':'8491767152:449:menu','selected_at':time.time()}}
+  m.PROGRESS['pending_selection']={**item(2),'selection':{'menu_fingerprint':m.TARGET_PEER+':449:menu','selected_at':time.time()}}
   b={'peer_id':m.TARGET_PEER,'mid':'449','dir':'in','buttons':[],'text':'Получил Ваш отклик на позицию Системный аналитик.'}
   self.assertEqual(m.visible_interview_intros([b]),[])
  async def test_completion_notice_before_rating_and_old_notice_not_reused(self):

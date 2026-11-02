@@ -8,7 +8,10 @@ from model_availability import wait_for_generation,ModelUnavailable
 from hh_test_transport import submit_test,TestSubmissionBlocked,classify
 from experience_context import TestCheckpoint,select_excerpts
 from vacancy_tests import prepare_test,test_system_prompt
-from candidate import reply_problem,load_profile
+from candidate import reply_problem
+
+TEST_PROFILE={'name':'Example Candidate','phone':'TEST-PHONE-000','salary_min':110000,
+              'salary_max':130000,'resume_text':'Synthetic profile for isolated tests.'}
 
 def resp(status=200,body=None,headers=None):
  r=Mock(status_code=status,headers=headers or {});r.json.return_value=body if body is not None else {'success':True};return r
@@ -107,12 +110,12 @@ class CheckpointTests(unittest.TestCase):
    cp=TestCheckpoint(d,'12','resume','A');cp.put(task(1),result('API'))
    for vid,context in [('13','A'),('12','B')]:self.assertIsNone(TestCheckpoint(d,vid,'resume',context).get(task(1)))
  def test_source_budget_and_profile_intact(self):
-  profile=load_profile();prompt=test_system_prompt(profile,'Kafka REST API БКС')
+  profile=TEST_PROFILE;prompt=test_system_prompt(profile,'Example API Example Queue Example Employer Alpha')
   self.assertLess(len(prompt),45000);self.assertIn(profile['phone'],prompt);self.assertIn(str(profile['salary_min']//1000),prompt)
  def test_confirmed_labour_and_no_document_offer(self):
-  self.assertIsNone(reply_problem('Опыт отражён в трудовой книжке и совпадает с резюме.',load_profile()))
+  self.assertIsNone(reply_problem('Опыт отражён в трудовой книжке и совпадает с резюме.',TEST_PROFILE))
   for text in ['Готов выслать электронную трудовую книжку.','Пришлю трудовую книжку.']:
-   self.assertIsNotNone(reply_problem(text,load_profile()))
+   self.assertIsNotNone(reply_problem(text,TEST_PROFILE))
 
 class LoadFormAndJobTests(unittest.TestCase):
  def test_form_403_is_controlled_and_diagnosed(self):
@@ -126,7 +129,7 @@ class LoadFormAndJobTests(unittest.TestCase):
   import hh
   profile={'name':'Тест','resume_text':'Тестовый профиль системного аналитика','profile_confirmed':True}
   with tempfile.TemporaryDirectory() as d,patch.object(hh,'BASE',Path(d)),patch.object(hh,'load_profile',return_value=profile),patch.object(hh,'repeat_pass',side_effect=ModelUnavailable('network_error')),patch.object(hh,'operation_lock',return_value=contextlib.nullcontext()):
-   with contextlib.redirect_stdout(io.StringIO()):code=hh.run(hh.parser().parse_args(['apply']))
+   with contextlib.redirect_stdout(io.StringIO()):code=hh.run(hh.parser().parse_args(['apply','--query','Example Analyst']))
    self.assertEqual(code,20)
    ledger=json.loads(next((Path(d)/'.state/runs').glob('*.json')).read_text());self.assertEqual(ledger['status'],'needs_attention')
  def test_panel_exposes_ai_wait(self):

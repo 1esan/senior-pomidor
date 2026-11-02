@@ -7,7 +7,7 @@ from screening_facts import known_answer
 from hh_test_transport import submit_test,TestSubmissionBlocked
 import hh
 B=Path(__file__).resolve().parents[1]
-FACTS={'screening_answers':'Стаж: 4 года 6 месяцев системным аналитиком.\nСредний балл диплома бакалавра: 4.2 по пятибалльной шкале.\nПубличные выступления: выступал перед аудиторией более 10 человек.\nОформление на последних двух местах работы: официально по ТК РФ в штате.'}
+FACTS={'screening_answers':'Стаж: 4 года в вымышленном учебном профиле Example Project Alpha.\nСредний балл диплома бакалавра: 4.2 по пятибалльной шкале.\nПроектная задача: Example Tool Beta в учебной среде.\nПример навыка: Example Database Z.\nПубличные выступления: выступал перед аудиторией более 10 человек.\nОформление на последних двух местах работы: официально по ТК РФ в штате.'}
 def raw(ids=None,text=''):return json.dumps({'choice_ids':ids or [],'text':text,'needs_review':False})
 def task(multi=False):return {'id':1,'description':'Ваш ответ?','open':'true','multiple':str(multi).lower(),'candidateSolutions':[{'id':'10','text':'Да'},{'id':'20','text':'Нет'}]}
 def data(t):return {'uidPk':'u','guid':'g','startTime':'s','required':'true','tasks':[t]}
@@ -26,10 +26,10 @@ class MixedQuestionsTests(unittest.TestCase):
    with self.subTest(r=r),self.assertRaises(TestNeedsReview):self.prepare(t,r)
  def test_requested_explanation_retries_bare_yes(self):
   t={**task(),'description':'Есть ли опыт SQL? Если да, то какие запросы писали?'}
-  ai=Mock();ai.complete.side_effect=[raw(['10']),raw(text='В БКС сверял операции и историю статусов в SQL.')]
+  ai=Mock();ai.complete.side_effect=[raw(['10']),raw(text='В Example Employer Alpha сверял операции и историю статусов в SQL.')]
   payload,_=prepare_test(data(t),{},ai,lambda text:None)
   self.assertEqual(payload['task_1'],'open');self.assertEqual(ai.complete.call_count,2)
- def test_real_forms_no_longer_fail_on_open_plus_choices(self):
+ def test_synthetic_forms_no_longer_fail_on_open_plus_choices(self):
   forms=json.loads((B/'tests/fixtures/hh_mixed_question_schemas.json').read_text())
   for vid,tasks in forms.items():
    for t in tasks:
@@ -43,10 +43,10 @@ class ConfirmedFactsTests(unittest.TestCase):
  def test_speaking_and_employment_binary(self):
   for q in ['Выступали ли вы перед аудиторией более 10 человек?','На последних двух местах работы вы были трудоустроены официально по ТК в штате?']:
    self.assertEqual(json.loads(known_answer(q,{'1':'Да','2':'Нет'},False,FACTS))['choice_ids'],['1'])
- def test_actual_experience_options_do_not_round_up_to_five(self):
-  forms=json.loads((B/'tests/fixtures/hh_mixed_question_schemas.json').read_text());t=forms['138435387'][0]
+ def test_fixture_experience_options_do_not_round_up_to_five(self):
+  forms=json.loads((B/'tests/fixtures/hh_mixed_question_schemas.json').read_text());t=forms['990100002'][0]
   opts={x['id']:x['text'] for x in t['candidateSolutions']}
-  r=json.loads(known_answer(t['description'],opts,False,FACTS));self.assertEqual(r['choice_ids'],['402702342'])
+  r=json.loads(known_answer(t['description'],opts,False,FACTS));self.assertEqual(r['choice_ids'],['990100070'])
  def test_profile_facts_skip_generation(self):
   t={**task(),'description':'Укажите средний балл диплома бакалавриата','candidateSolutions':[]}
   ai=Mock();answers,_=prepare_test(data(t),{},ai,lambda text:None,profile=FACTS)
@@ -78,7 +78,7 @@ class RecoveryTests(unittest.TestCase):
   fake.save_cookies.assert_called_once()
  def test_cancel_is_not_failed_in_run_ledger(self):
   with tempfile.TemporaryDirectory() as d,patch.object(hh,'BASE',Path(d)),patch.object(hh,'load_profile',return_value={'profile_confirmed':True}),patch.object(hh,'repeat_pass',return_value=130),patch.object(hh,'operation_lock',return_value=contextlib.nullcontext()):
-   self.assertEqual(hh.run(hh.parser().parse_args(['apply'])),130)
+   self.assertEqual(hh.run(hh.parser().parse_args(['apply','--query','Example Analyst'])),130)
    run=json.loads(next((Path(d)/'.state/runs').glob('*.json')).read_text());self.assertEqual(run['status'],'stopped')
 if __name__=='__main__':
  with patch.object(socket.socket,'connect',side_effect=AssertionError('Network forbidden')):unittest.main()

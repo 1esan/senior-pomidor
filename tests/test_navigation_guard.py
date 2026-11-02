@@ -6,7 +6,7 @@ BASE=Path(__file__).resolve().parents[1];sys.path.insert(0,str(BASE));os.environ
 from playwright.async_api import async_playwright
 import telegram_web_guard as guard
 from autonomous_runtime import NeedsDecision
-HTML='''<div class="chat"><div class="bubbles"><div class="bubble is-in" data-mid="1"><div class="message">Вопрос</div></div></div><div class="input-message-input" contenteditable="true" data-peer-id="8491767152"></div><button class="btn-send send">Send</button></div><script>window.sent=[];document.querySelector('button').onclick=()=>sent.push(document.querySelector('.input-message-input').innerText);</script>'''
+HTML=f'''<div class="chat"><div class="bubbles"><div class="bubble is-in" data-mid="1"><div class="message">Вопрос</div></div></div><div class="input-message-input" contenteditable="true" data-peer-id="{guard.TARGET_PEER}"></div><button class="btn-send send">Send</button></div><script>window.sent=[];document.querySelector('button').onclick=()=>sent.push(document.querySelector('.input-message-input').innerText);</script>'''
 class NavigationTests(unittest.IsolatedAsyncioTestCase):
  async def asyncSetUp(self):
   self.runtime=await async_playwright().start();self.browser=await self.runtime.chromium.launch(headless=True,channel='chromium');self.context=await self.browser.new_context();await self.context.set_offline(True)
@@ -20,7 +20,7 @@ class NavigationTests(unittest.IsolatedAsyncioTestCase):
   await guard.dispatch(self.page,guard.SEND_JS,{'text':'Ответ','mid':'1','source_text':'Вопрос'})
   self.assertEqual(await self.page.evaluate('sent'),['Ответ'])
  async def test_username_to_same_numeric_peer_remains_valid(self):
-  await self.page.evaluate("() => {const oldURL=location.href;history.replaceState(null,'','#8491767152');window.dispatchEvent(new HashChangeEvent('hashchange',{oldURL,newURL:location.href}));}")
+  await self.page.evaluate(f"() => {{const oldURL=location.href;history.replaceState(null,'','#{guard.TARGET_PEER}');window.dispatchEvent(new HashChangeEvent('hashchange',{{oldURL,newURL:location.href}}));}}")
   self.assertEqual(await guard.assert_target(self.page),guard.TARGET_PEER)
  async def test_foreign_route_blocks_even_if_dom_still_old_bot(self):
   await self.page.evaluate("() => {history.pushState(null,'','#123');window.dispatchEvent(new PopStateEvent('popstate'));}")
@@ -30,7 +30,7 @@ class NavigationTests(unittest.IsolatedAsyncioTestCase):
   await self.page.evaluate("""() => {const initial=location.href;history.replaceState(null,'','#123');const foreign=location.href;history.replaceState(null,'','#@Giga_recruiter_bot');window.dispatchEvent(new HashChangeEvent('hashchange',{oldURL:initial,newURL:foreign}));window.dispatchEvent(new HashChangeEvent('hashchange',{oldURL:foreign,newURL:location.href}));}""")
   with self.assertRaises(NeedsDecision):await guard.assert_target(self.page)
  async def test_same_route_event_never_clears_foreign_peer_latch(self):
-  await self.page.evaluate("() => {const editor=document.querySelector('.input-message-input');editor.dataset.peerId='123';editor.dataset.peerId='8491767152';}")
+  await self.page.evaluate(f"() => {{const editor=document.querySelector('.input-message-input');editor.dataset.peerId='123';editor.dataset.peerId='{guard.TARGET_PEER}';}}")
   await self.page.evaluate("() => window.dispatchEvent(new PopStateEvent('popstate'))")
   with self.assertRaises(NeedsDecision):await guard.assert_target(self.page)
  async def test_foreign_peer_on_same_route_is_blocked(self):

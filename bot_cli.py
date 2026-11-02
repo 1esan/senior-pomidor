@@ -6,8 +6,8 @@ from runtime import operation_lock,repeat_pass
 def prepare_schedule():
     # Export only: no registration, no enabled tasks, no live sending by default.
     folder=BASE/'schedule';folder.mkdir(exist_ok=True)
-    target=folder/'ru.egorlabutin.hh-replies.plist'
-    data={'Label':'ru.egorlabutin.hh-replies','Disabled':True,'ProgramArguments':[str(BASE/'.venv/bin/python'),str(BASE/'hh.py'),'reply','--period','7'],
+    target=folder/'ru.seniorpomidor.hh-replies.plist'
+    data={'Label':'ru.seniorpomidor.hh-replies','Disabled':True,'ProgramArguments':[str(BASE/'.venv/bin/python'),str(BASE/'hh.py'),'reply','--period','7'],
           'StartCalendarInterval':[{'Hour':h,'Minute':0} for h in (9,13,17,21)],'WorkingDirectory':str(BASE),
           'StandardOutPath':str(BASE/'logs/scheduled-reply.log'),'StandardErrorPath':str(BASE/'logs/scheduled-reply.log')}
     target.write_bytes(plistlib.dumps(data));target.chmod(0o600)

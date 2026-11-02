@@ -69,7 +69,7 @@ class TestFormLoading(unittest.TestCase):
     def test_wrapper_preserves_sent_results_on_controlled_stop(self):
         def interrupted(fn,*args):raise TestSubmissionBlocked('Сессия сайта HH истекла')
         with tempfile.TemporaryDirectory() as tmp,patch.object(hh,'BASE',Path(tmp)),patch.object(hh,'load_profile',return_value={'profile_confirmed':True}),patch.object(hh,'repeat_pass',side_effect=interrupted),patch.object(hh,'operation_lock',return_value=contextlib.nullcontext()):
-            self.assertEqual(hh.run(hh.parser().parse_args(['apply'])),20)
+            self.assertEqual(hh.run(hh.parser().parse_args(['apply','--query','Example Analyst'])),20)
             ledger=json.loads(next((Path(tmp)/'.state/runs').glob('*')).read_text())
             self.assertEqual(ledger['status'],'needs_attention');self.assertIn('истекла',ledger['message'])
 

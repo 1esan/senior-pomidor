@@ -11,6 +11,11 @@
 !/setup.html
 !/hh-dash-template.html
 !/requirements-lock.txt
+!/profile-template.example.json
+!/cover-letter-settings.example.json
+!/FIRST_RUN.md
+!/first_run.py
+!/Первичная_настройка.command
 !/interview_settings.json
 !/tests/
 !/static/

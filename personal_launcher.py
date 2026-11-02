@@ -1,7 +1,7 @@
 from python_runtime import python_command
 """Personal macOS launcher. Starts services only; never starts sending jobs."""
 from pathlib import Path
-import argparse, fcntl, json, os, subprocess, sys, time, urllib.request, urllib.error
+import argparse, fcntl, json, os, shutil, subprocess, sys, time, urllib.request, urllib.error
 
 BASE = Path(__file__).resolve().parent
 PANEL = 'http://127.0.0.1:8768'
@@ -9,19 +9,37 @@ ADAPTER = 'http://127.0.0.1:8766'
 
 class LaunchError(RuntimeError): pass
 
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Never forward local service keys to a redirect destination."""
+    def redirect_request(self, request, fp, code, message, headers, newurl):
+        return None
+
 def configuration():
-    config=json.loads((BASE/'personal_launcher.json').read_text())
+    try:config=json.loads((BASE/'personal_launcher.json').read_text())
+    except FileNotFoundError:config={}
+    if not isinstance(config,dict):raise LaunchError('Настройки запуска должны быть JSON-объектом.')
     timeout=float(config.get('startup_timeout_seconds',35))
     if not 1 <= timeout <= 120: raise LaunchError('Некорректное время запуска в настройках.')
     config['timeout']=timeout
     return config
+
+def configured_services(config):
+    """The panel is usable without an adapter; an adapter is explicitly opt-in."""
+    services=[('panel',PANEL,BASE/'.state/console-key','X-Console-Key',('profile','operations'),python_command('-u',str(BASE/'setup_console.py'),'--no-open'),BASE)]
+    raw=os.environ.get('SENIOR_POMIDOR_ADAPTER_DIR') or config.get('adapter_dir')
+    if raw:
+        adapter=Path(raw).expanduser()
+        if not adapter.is_absolute():raise LaunchError('Путь к адаптеру должен быть абсолютным.')
+        node=config.get('node') or shutil.which('node') or ''
+        services.insert(0,('gpt',ADAPTER,adapter/'.state/adapter-key','X-Adapter-Token',('status','sharing'),[node,str(adapter/'server.mjs'),'--no-browser'],adapter))
+    return services
 
 def probe(url, key_file, header, expected):
     """Only trust an authenticated response of the expected local service."""
     try: key=Path(key_file).read_text().strip()
     except FileNotFoundError: key=''
     request=urllib.request.Request(url+'/api/status',headers={header:key})
-    opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    opener=urllib.request.build_opener(urllib.request.ProxyHandler({}),NoRedirect())
     try:
         with opener.open(request,timeout=2) as response:
             data=json.loads(response.read(2_000_000))
@@ -62,9 +80,7 @@ def main(argv=None):
     parser.add_argument('--check',action='store_true')
     args=parser.parse_args(argv)
     config=configuration()
-    adapter=Path(config['adapter_dir'])
-    services=[('gpt',ADAPTER,adapter/'.state/adapter-key','X-Adapter-Token',('status','sharing'),[config['node'],str(adapter/'server.mjs'),'--no-browser'],adapter),
-              ('panel',PANEL,BASE/'.state/console-key','X-Console-Key',('profile','operations'),python_command('-u',str(BASE/'setup_console.py'),'--no-open'),BASE)]
+    services=configured_services(config)
     if args.check:
         print(json.dumps({name:probe(url,key,header,expected) for name,url,key,header,expected,*_ in services},ensure_ascii=False))
         return 0
@@ -91,6 +107,7 @@ def main(argv=None):
         print('\n'.join(warnings),file=sys.stderr)
         return 1
     print('Панель готова. Отправки запускаются только из панели.')
+    if not any(item[0]=='gpt' for item in services):print('ИИ-адаптер не настроен. Его можно подключить отдельно.')
     return 0
 
 if __name__=='__main__':

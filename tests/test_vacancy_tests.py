@@ -7,7 +7,7 @@ sys.path.insert(0,str(BASE))
 import hh,operations
 from vacancy_tests import prepare_test,TestNeedsReview
 from hh_applicant_tool.operations.apply_vacancies import Operation
-PROFILE={'name':'Тестовый владелец','profile_confirmed':True,'resume_text':'Опыт SQL','salary_min':280000}
+PROFILE={'name':'Тестовый владелец','profile_confirmed':True,'resume_text':'Опыт SQL','salary_min':110000}
 V={'id':'12','name':'Системный аналитик','description':'API','alternate_url':'https://hh.ru/vacancy/12','employer':{'id':'7','name':'Компания'},'has_test':True}
 def task(opened=False,multiple=False):
  return {'id':1,'description':'Вопрос по SQL','open':str(opened).lower(),'multiple':str(multiple).lower(),'candidateSolutions':[] if opened else [{'id':'10','text':'Первый'},{'id':'20','text':'Второй'}]}
@@ -18,11 +18,11 @@ class TestValidation(unittest.TestCase):
  def test_single(self):self.assertEqual(self.prepare()[0],{'task_1':'20'})
  def test_multi(self):self.assertEqual(self.prepare(task(multiple=True),answer(['10','20']))[0],{'task_1':['10','20']})
  def test_text(self):self.assertEqual(self.prepare(task(opened=True),answer([],text='SQL использую в работе.'))[0],{'task_1_text':'SQL использую в работе.'})
- def test_real_hh_open_multiple_is_text(self):
+ def test_open_multiple_schema_is_text(self):
   payload,_=self.prepare(task(opened=True,multiple=True),answer([],text='Я бы начал с анализа контрактов.'))
   self.assertEqual(payload,{'task_1_text':'Я бы начал с анализа контрактов.'})
  def test_hypothesis_passes_as_text_and_keeps_its_modality(self):
-  text='В БКС я описывал API. Для vLLM я бы определил контракт, таймауты и ограничения нагрузки.'
+  text='В Example Employer Alpha я описывал API. Для vLLM я бы определил контракт, таймауты и ограничения нагрузки.'
   payload,_=self.prepare(task(opened=True),answer([],text=text))
   self.assertEqual(payload['task_1_text'],text)
  def test_never_guesses(self):
@@ -38,12 +38,12 @@ class TestValidation(unittest.TestCase):
  def test_bad_text_guard(self):
   with self.assertRaises(TestNeedsReview):prepare_test(testdata(task(opened=True)),V,Mock(complete=Mock(return_value=answer([],text='NEEDS_USER'))),lambda t:'нет личного факта')
  def test_review_regenerates_into_grounded_answer(self):
-  ai=Mock();ai.complete.side_effect=[answer([],review=True),answer([],text='В БКС я работал системным аналитиком в контуре автоследования: описывал API и торговые поручения.')]
+  ai=Mock();ai.complete.side_effect=[answer([],review=True),answer([],text='В Example Employer Alpha я работал системным аналитиком в контуре тестового сервиса операций: описывал API и торговые поручения.')]
   payload,_=prepare_test(testdata(task(opened=True)),V,ai,lambda t:None)
-  self.assertIn('БКС',payload['task_1_text']);self.assertEqual(ai.complete.call_count,2)
+  self.assertIn('Example Employer Alpha',payload['task_1_text']);self.assertEqual(ai.complete.call_count,2)
   self.assertIn('Переформулируй',ai.complete.call_args.args[0])
  def test_service_phrase_is_regenerated_not_sent(self):
-  ai=Mock();ai.complete.side_effect=[answer([],text='В резюме не указано, уточню.'),answer([],text='Я описывал API и статусные модели в БКС.')]
+  ai=Mock();ai.complete.side_effect=[answer([],text='В резюме не указано, уточню.'),answer([],text='Я описывал API и статусные модели в Example Employer Alpha.')]
   payload,_=prepare_test(testdata(task(opened=True)),V,ai,lambda t:'Служебная фраза' if 'уточню' in t else None)
   self.assertNotIn('уточню',payload['task_1_text']);self.assertEqual(ai.complete.call_count,2)
  def test_persistent_unknown_stays_manual_after_three_attempts(self):
@@ -63,7 +63,7 @@ class TestValidation(unittest.TestCase):
   with self.assertRaises(TestNeedsReview):prepare_test(data,V,Mock(complete=Mock(return_value=answer())),lambda t:None)
 
 class RealSchemaTests(unittest.TestCase):
- def test_all_four_previously_skipped_forms_parse(self):
+ def test_synthetic_forms_parse(self):
   fixture=BASE/'tests/fixtures/hh_test_question_schemas.json'
   for vid,tasks in json.loads(fixture.read_text()).items():
    with self.subTest(vacancy=vid):
@@ -78,14 +78,14 @@ class ExperienceSourceTests(unittest.TestCase):
  def test_source_is_read_fresh_and_frontmatter_removed(self):
   import vacancy_tests as vt
   with tempfile.TemporaryDirectory() as d,patch.object(vt,'BASE',Path(d)):
-   path=Path(d)/'Легенда.md';path.write_text('---\nstatus: archive\n---\nКейс БКС: корреляция операций.')
+   path=Path(d)/'case_notes.md';path.write_text('---\nstatus: archive\n---\nПример Example Employer Alpha: корреляция тестовых операций.')
    (Path(d)/'test_sources.json').write_text(json.dumps({'experience_files':[str(path)]}))
    first=vt.test_system_prompt(PROFILE)
-   self.assertIn('корреляция операций',first);self.assertNotIn('status: archive',first)
+   self.assertIn('корреляция тестовых операций',first);self.assertNotIn('status: archive',first)
    self.assertIn('имеют приоритет',first)
-   path.write_text('Кейс Flowwow: запаздывающие события.')
+   path.write_text('Пример Example Marketplace Beta: запаздывающие тестовые события.')
    second=vt.test_system_prompt(PROFILE)
-   self.assertIn('запаздывающие события',second);self.assertNotIn('корреляция операций',second)
+   self.assertIn('запаздывающие тестовые события',second);self.assertNotIn('корреляция тестовых операций',second)
  def test_missing_config_keeps_profile_only(self):
   import vacancy_tests as vt
   with tempfile.TemporaryDirectory() as d,patch.object(vt,'BASE',Path(d)):
@@ -136,7 +136,7 @@ class FlowTests(unittest.TestCase):
   kwargs=self.tool.session.post.call_args.kwargs
   self.assertEqual(kwargs['data']['task_1'],'20');self.assertEqual(kwargs['timeout'],(10,45));self.assertFalse(kwargs['allow_redirects'])
  def test_related_case_letter_matches_intent_payload_and_return(self):
-  case='Есть схожий опыт: в БКС описывал проверки и ограничения API для финансовых операций.'
+  case='Есть схожий опыт: в Example Employer Alpha описывал проверки и ограничения API для финансовых операций.'
   self.tool.get_ai_client.return_value.complete.return_value=json.dumps({'choice_ids':['20'],'text':'','needs_review':False,'related_case':case},ensure_ascii=False)
   self.op.dry_run=False;response=Mock(status_code=200,headers={});response.json.return_value={'success':True};self.tool.session.post.side_effect=None;self.tool.session.post.return_value=response
   result=self.solve();sent=self.tool.session.post.call_args.kwargs['data']
@@ -165,7 +165,7 @@ class FlowTests(unittest.TestCase):
  def test_pipeline_counts_test_preview_and_live_once(self):
   for live,use_hook in ((False,False),(True,False),(False,True),(True,True)):
    with self.subTest(live=live,use_hook=use_hook):
-    op=Operation();command=hh.build_command(hh.parser().parse_args(['apply','--solve-tests']+(['--live'] if live else [])),PROFILE)
+    op=Operation();command=hh.build_command(hh.parser().parse_args(['apply','--query','Example Analyst','--solve-tests']+(['--live'] if live else [])),PROFILE)
     parser=argparse.ArgumentParser();op.setup_parser(parser);args=parser.parse_args(command[command.index('apply')+1:]);args.use_ai=True
     tool=Mock();tool.config={};tool.application_budget_exhausted=lambda:False;tool.candidate_cover_letter=None
     tool.get_openai_args.return_value={'api_key':'offline','base_url':'http://localhost'}
@@ -180,7 +180,7 @@ class FlowTests(unittest.TestCase):
     tool.api_client.post.assert_not_called()
  def test_panel_flag_propagates_and_defaults_skip(self):
   for enabled in (False,True):
-   cmd,_=operations.command_for('apply',{'solve_tests':enabled});args=hh.parser().parse_args(cmd[1:]);self.assertEqual(args.solve_tests,enabled)
+   cmd,_=operations.command_for('apply',{'solve_tests':enabled,'queries':'Example Analyst'});args=hh.parser().parse_args(cmd[1:]);self.assertEqual(args.solve_tests,enabled)
    built=hh.build_command(args,PROFILE);self.assertIn('--no-skip-tests' if enabled else '--skip-tests',built)
 
 if __name__=='__main__':
